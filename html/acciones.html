@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acciones</title>
+
+    <link rel="stylesheet" href="../css/header.css">
+    <link rel="stylesheet" href="../css/estilos.css">
+    <link rel="stylesheet" href="../css/footer.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="header"></div>
+    <main>
+        <h1>Acciones</h1>
+        <nav>
+            <ul>
+                <li><a href="#Activos">Activos</a></li>
+                <li><a href="#Graficos">Gráficos</a></li>
+                <li><a href="#Historial">Historial</a></li>
+            </ul>
+        </nav>
+
+        <form id="formAcciones" method="post" action="../php/crud_accion.php">
+            <label>Acción:
+                <select name="accion" id="accionAcc">
+                    <option value="insertar">Insertar</option>
+                    <option value="modificar">Modificar</option>
+                    <option value="eliminar">Eliminar</option>
+                </select>
+            </label>
+
+            <div id="tickerField">
+                <input type="text" name="ticker" placeholder="Ticker" required>
+            </div>
+
+            <input type="text" name="nombre" placeholder="Nombre de la empresa">
+            <input type="text" name="sector" placeholder="Sector">
+            <input type="number" step="0.000001" name="cantidad" placeholder="Cantidad de acciones">
+            <input type="number" step="0.01" name="precio_promedio" placeholder="Precio promedio (€)">
+
+            <label style="margin-top:10px;">
+                <input type="checkbox" name="dividendos"> ¿Genera dividendos?
+            </label>
+
+            <button type="submit">Ejecutar</button>
+        </form>
+
+        <h2 id="Activos">Activos</h2>
+        <div class="resumen-total" id="resumenTotalAcciones"
+            <strong>📈 Valor total de acciones:</strong>
+            <span id="totalAccionesDisplay">Cargando...</span>
+        </div>
+        <div id="tablaAcciones"></div>
+
+        <h2 id="Graficos">Gráficos</h2>
+        <div id="graficoDistribucionAcc" style="width:100%; height:400px; margin-bottom:50px;"></div>
+        <div id="graficoRentabilidadAcc" style="width:100%; height:400px; margin-bottom:50px;"></div>
+        <div id="graficoEvolucionAcc" style="width:100%; height:400px;"></div>
+
+        <h2 id="Historial">Historial</h2>
+        <form id="formHistorialAcc" method="post" action="../php/crud_historial_accion.php">
+            <label>Acción:
+                <select name="accion" id="accionHistorialAcc">
+                    <option value="insertar">Insertar</option>
+                    <option value="modificar">Modificar</option>
+                    <option value="eliminar">Eliminar</option>
+                </select>
+            </label>
+
+            <input type="date" name="fecha" placeholder="Fecha (YYYY-MM-DD)">
+            <input type="number" step="0.01" name="valor" placeholder="Valor (€)" id="valorAccionesPlaceholder">
+
+            <button type="submit">Ejecutar</button>
+        </form>
+
+        <div id="historialAcciones"></div>
+
+    </main>
+    <div id="footer"></div>
+    <script src="../js/varios.js"></script>
+    <script src="../js/acciones.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fondos</title>
+
+    <link rel="stylesheet" href="../css/header.css">
+    <link rel="stylesheet" href="../css/estilos.css">
+    <link rel="stylesheet" href="../css/footer.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="header"></div>
+    <main>
+        <h1>Fondos</h1>
+        <nav>
+            <ul>
+                <li><a href="#Activos">Activos</a></li>
+                <li><a href="#Graficos">Gráficos</a></li>
+                <li><a href="#Historial">Historial</a></li>
+            </ul>
+        </nav>
+
+        <form id="formFondos" method="post" action="../php/crud_fondo.php">
+            <label>Acción:
+                <select name="accion" id="accionFond">
+                    <option value="insertar">Insertar</option>
+                    <option value="modificar">Modificar</option>
+                    <option value="eliminar">Eliminar</option>
+                </select>
+            </label>
+
+            <div id="isinField">
+                <input type="text" name="isin" placeholder="ISIN" required>
+            </div>
+
+            <input type="text" name="nombre" placeholder="Nombre del fondo">
+            <input type="number" step="0.00001" name="cantidad" placeholder="Cantidad de participaciones">
+            <input type="number" step="0.01" name="precio_promedio" placeholder="Precio promedio (€)">
+            <input type="text" name="moneda" placeholder="Moneda">
+            <input type="number" name="riesgo" placeholder="Riesgo (1-7)">
+            <input type="text" name="politica" placeholder="Política (Acumulación/Distribución)">
+            <input type="text" name="tipo" placeholder="Tipo (Índice/Mixto/Renta Fija/Renta Variable)">
+            <input type="text" name="gestora" placeholder="Gestora">
+            <input type="text" name="geografia" placeholder="Geografía">
+
+            <button type="submit">Ejecutar</button>
+        </form>
+
+        <h2 id="Activos">Activos</h2>
+        <div class="resumen-total" id="resumenTotalFondos"
+            <strong>📊 Valor total de fondos:</strong>
+            <span id="totalFondosDisplay">Cargando...</span>
+        </div>
+        <div id="tablaFondos"></div>
+
+        <h2 id="Graficos">Gráficos</h2>
+        <div id="graficoDistribucionFond" style="width:100%; height:400px; margin-bottom:50px;"></div>
+        <div id="graficoRentabilidadFond" style="width:100%; height:400px; margin-bottom:50px;"></div>
+        <div id="graficoEvolucionFond" style="width:100%; height:400px;"></div>
+
+        <h2 id="Historial">Historial</h2>
+        <form id="formHistorialFond" method="post" action="../php/crud_historial_fondo.php">
+            <label>Acción:
+                <select name="accion" id="accionHistorialFond">
+                    <option value="insertar">Insertar</option>
+                    <option value="modificar">Modificar</option>
+                    <option value="eliminar">Eliminar</option>
+                </select>
+            </label>
+
+            <input type="date" name="fecha" placeholder="Fecha (YYYY-MM-DD)">
+            <input type="number" step="0.01" name="valor" placeholder="Valor (€)" id="valorFondosPlaceholder">
+
+            <button type="submit">Ejecutar</button>
+        </form>
+        
+        <div id="historialFondos"></div>
+
+    </main>
+    <div id="footer"></div>
+    <script src="../js/varios.js"></script>
+    <script src="../js/fondos.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+</body>
+
+</html>

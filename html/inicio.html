@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicio</title>
+    <link rel="stylesheet" href="../css/header.css">
+    <link rel="stylesheet" href="../css/estilos.css">
+    <link rel="stylesheet" href="../css/footer.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="header"></div>
+    <main>
+        <section id="resumen">
+            <h1>Resumen de la Inversión</h1>
+            <table border="1" id="tabla-resumen">
+                <thead>
+                    <tr>
+                        <th>INVERSIÓN</th>
+                        <th>USD</th>
+                        <th>EUR</th>
+                        <th>INV. INICIAL (€)</th>
+                        <th>RENT.</th>
+                        <th>DIF.</th>
+                        <th>PESO</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpo-tabla-resumen">
+                    <!-- Las filas se llenarán con JavaScript -->
+                    <tr>
+                        <td colspan="7">Cargando datos...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="modificar-inversion">
+            <h2>Modificar Inversión</h2>
+            <form id="form-modificar" method="POST" action="../php/modificar_inversion.php">
+                <label for="inversion">Selecciona inversión:</label>
+                <select name="id" id="inversion">
+                    <!-- Opciones se llenarán con JS -->
+                </select>
+
+                <label for="cantidad">Nueva inversión inicial (€):</label>
+                <input type="number" step="0.01" name="cantidad" id="cantidad" required>
+
+                <button type="submit">Actualizar</button>
+            </form>
+            <p id="mensaje"></p>
+        </section>
+
+    </main>
+    <div id="footer"></div>
+
+    <script src="../js/varios.js"></script>
+    <script src="../js/inicio.js"></script>
+</body>
+
+</html>

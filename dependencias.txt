@@ -1,0 +1,3 @@
+Ejecutar comandos en la terminal:
+pip install yfinance pandas
+pip install investpy
