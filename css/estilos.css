@@ -478,4 +478,55 @@ table img {
     transform: translateY(0) !important;
 }
 
+/* Estilos para el botón de actualizar todos */
+.btn-actualizar-todos,
+.btn-actualizar {
+    background: linear-gradient(135deg, #63f963, #339733);
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 18px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
 
+.btn-actualizar-todos:hover,
+.btn-actualizar:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.btn-actualizar-todos:active,
+.btn-actualizar:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.btn-actualizar-todos:disabled
+.btn-actualizar:disabled {
+    background: #cccccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Efecto de carga */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.btn-actualizar-todos.updating,
+.btn-actualizar.updating{
+    animation: pulse 1.5s infinite;
+}

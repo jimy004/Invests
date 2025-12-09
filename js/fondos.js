@@ -445,3 +445,53 @@ if (document.getElementById('formFondos') && !document.getElementById('btnLimpia
     btnSubmit.parentNode.insertBefore(btnLimpiar, btnSubmit.nextSibling);
 }
 });
+//----------------------------------------------------------------------------
+// Actualizar precios desde Yahoo Finance
+function actualizarPreciosFondos() {
+    const btn = document.getElementById('btnActualizarPreciosFondos');
+    const statusSpan = document.getElementById('actualizacionStatusFondos');
+    
+    if (btn) btn.disabled = true;
+    if (statusSpan) statusSpan.textContent = 'Actualizando...';
+    
+    fetch('../php/actualizar_precios_fondos.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Mostrar mensaje de éxito
+                alert(data.message);
+                
+                // Recargar tabla con nuevos precios
+                cargarTablaFond();
+                
+                // Recargar total
+                cargarTotalFondos();
+                
+                // Actualizar gráficos
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al actualizar precios');
+        })
+        .finally(() => {
+            if (btn) btn.disabled = false;
+            if (statusSpan) statusSpan.textContent = '';
+        });
+}
+
+// Añade el event listener para el botón (al final del archivo, en el DOMContentLoaded):
+document.addEventListener('DOMContentLoaded', function() {
+    // ... código existente ...
+    
+    // Botón para actualizar precios de fondos
+    const btnActualizarFondos = document.getElementById('btnActualizarPreciosFondos');
+    if (btnActualizarFondos) {
+        btnActualizarFondos.addEventListener('click', actualizarPreciosFondos);
+    }
+    
+    // ... resto del código existente ...
+});

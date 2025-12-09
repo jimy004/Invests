@@ -454,4 +454,53 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Añade esta función en acciones.js, por ejemplo después de la función cargarTablaAcc()
+
+//----------------------------------------------------------------------------
+// Actualizar precios desde Yahoo Finance
+function actualizarPreciosAcciones() {
+    const btn = document.getElementById('btnActualizarPreciosAcciones');
+    const statusSpan = document.getElementById('actualizacionStatusAcciones');
+    
+    if (btn) btn.disabled = true;
+    if (statusSpan) statusSpan.textContent = 'Actualizando...';
+    
+    fetch('../php/actualizar_precios_acciones.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Mostrar mensaje de éxito
+                alert(data.message);
+                
+                // Recargar tabla con nuevos precios
+                cargarTablaAcc();
+                
+                // Recargar total
+                cargarTotalAcciones();
+                
+                // Actualizar gráficos
+                location.reload(); // O puedes recargar solo los gráficos
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al actualizar precios');
+        })
+        .finally(() => {
+            if (btn) btn.disabled = false;
+            if (statusSpan) statusSpan.textContent = '';
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // Botón para actualizar precios de acciones
+    const btnActualizarAcc = document.getElementById('btnActualizarPreciosAcciones');
+    if (btnActualizarAcc) {
+        btnActualizarAcc.addEventListener('click', actualizarPreciosAcciones);
+    }
+});
+
 

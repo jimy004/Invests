@@ -22,18 +22,16 @@ try {
     }
 
     // Valores actuales
-    $usd_criptos = obtener_valores($conexion, 'criptomoneda');
-    $usd_acciones = obtener_valores($conexion, 'accion');
-    $usd_fondos = obtener_valores($conexion, 'fondo');
-    
-
-    // Tipo de cambio USD->EUR
     $tipo_cambio = usd_to_eur();
-    $eur_criptos = $usd_criptos * $tipo_cambio;
-    $eur_acciones = $usd_acciones * $tipo_cambio;
-    $eur_fondos = $usd_fondos * $tipo_cambio;
+    $usd_criptos = obtener_valores($conexion, 'criptomoneda');
+    $eur_acciones = obtener_valores($conexion, 'accion');
+    $eur_fondos = obtener_valores($conexion, 'fondo');
     $eur_liquidez = obtener_inv_inicial($conexion, 'euros');
+
+    $eur_criptos = $usd_criptos * $tipo_cambio;
     $usd_liquidez = $eur_liquidez / $tipo_cambio;
+    $usd_acciones = $eur_acciones / $tipo_cambio;
+    $usd_fondos = $eur_fondos / $tipo_cambio;
 
     // Inversión inicial por tipo
     $inv_inicial_criptos = obtener_inv_inicial($conexion, 'criptomoneda');
@@ -47,8 +45,8 @@ try {
         $eur = floatval($eur);
         $inv_inicial = floatval($inv_inicial);
 
-        $rent = $inv_inicial != 0 ? (($usd - $inv_inicial)/$inv_inicial*100) : 0;
-        $dif  = $usd - $inv_inicial;
+        $rent = $inv_inicial != 0 ? (($eur - $inv_inicial)/$inv_inicial*100) : 0;
+        $dif  = $eur - $inv_inicial;
 
         return [
             'nombre' => $nombre,

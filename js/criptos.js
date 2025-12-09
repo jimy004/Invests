@@ -413,3 +413,50 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 });
+//----------------------------------------------------------------------------
+// Actualizar precios desde CoinGecko
+function actualizarPreciosCriptos() {
+    const btn = document.getElementById('btnActualizarPrecios');
+    const statusSpan = document.getElementById('actualizacionStatus');
+    
+    if (btn) btn.disabled = true;
+    if (statusSpan) statusSpan.textContent = 'Actualizando...';
+    
+    fetch('../php/actualizar_precios_cripto.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Mostrar mensaje de éxito
+                alert(data.message);
+                
+                // Recargar tabla con nuevos precios
+                cargarTabla();
+                
+                // Recargar total
+                cargarTotalCriptos();
+                
+                // Actualizar gráficos
+                location.reload(); // O puedes recargar solo los gráficos
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al actualizar precios');
+        })
+        .finally(() => {
+            if (btn) btn.disabled = false;
+            if (statusSpan) statusSpan.textContent = '';
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // Botón para actualizar precios
+    const btnActualizar = document.getElementById('btnActualizarPrecios');
+    if (btnActualizar) {
+        btnActualizar.addEventListener('click', actualizarPreciosCriptos);
+    }
+    
+});
