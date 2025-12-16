@@ -16,13 +16,15 @@ async function cargarResumen() {
 
         resumen.forEach(fila => {
             const tr = document.createElement('tr');
+            
+            // Crear celdas con clases CSS para rentabilidad y diferencia
             tr.innerHTML = `
                 <td>${fila.nombre}</td>
                 <td>${fila.usd}</td>
                 <td>${fila.eur}</td>
                 <td>${fila.inv_inicial}</td>
-                <td>${fila.rentabilidad}</td>
-                <td>${fila.diferencia}</td>
+                <td class="${fila.rentabilidad_clase || ''}">${fila.rentabilidad}</td>
+                <td class="${fila.diferencia_clase || ''}">${fila.diferencia}</td>
                 <td>${fila.peso}</td>
             `;
             tbody.appendChild(tr);

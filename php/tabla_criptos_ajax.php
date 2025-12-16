@@ -14,6 +14,7 @@ $html = '<table border="1" cellpadding="10" cellspacing="0" class="tabla-criptos
                     <th data-col="valor_actual">Valor actual ($)</th>
                     <th data-col="cantidad">Cantidad</th>
                     <th data-col="precio_promedio">Precio promedio ($)</th>
+                    <th data-col="rentabilidad">Rentabilidad (%)</th>
                     <th data-col="valor_total">Valor total ($)</th>
                 </tr>
             </thead>
@@ -21,6 +22,20 @@ $html = '<table border="1" cellpadding="10" cellspacing="0" class="tabla-criptos
 
 foreach ($criptos as $cripto) {
     $valor_total = $cripto['valor_actual'] * $cripto['cantidad'];
+    
+    // Calcular rentabilidad
+    $rentabilidad = 0;
+    if ($cripto['precio_promedio'] > 0) {
+        $rentabilidad = (($cripto['valor_actual'] - $cripto['precio_promedio']) / $cripto['precio_promedio']) * 100;
+    }
+    
+    // Determinar clase CSS según si es positiva o negativa
+    $clase_rentabilidad = '';
+    if ($rentabilidad > 0) {
+        $clase_rentabilidad = 'rentabilidad-positiva';
+    } elseif ($rentabilidad < 0) {
+        $clase_rentabilidad = 'rentabilidad-negativa';
+    }
 
     $html .= '<tr class="fila-cripto fila-con-hover"
                 data-nombre="' . htmlspecialchars($cripto['nombre'], ENT_QUOTES) . '"
@@ -34,6 +49,7 @@ foreach ($criptos as $cripto) {
                 <td>' . number_format($cripto['valor_actual'], 2) . '</td>
                 <td>' . number_format($cripto['cantidad'], 4) . '</td>
                 <td>' . number_format($cripto['precio_promedio'], 2) . '</td>
+                <td class="' . $clase_rentabilidad . '">' . number_format($rentabilidad, 2) . '%</td>
                 <td>' . number_format($valor_total, 2) . '</td>
               </tr>';
 }

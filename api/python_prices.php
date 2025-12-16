@@ -1,21 +1,26 @@
 <?php
 function obtenerValorActualPython($tickers) {
-    // Acepta un string o un array
     if (is_array($tickers)) {
         $tickers_str = implode(",", $tickers);
     } else {
         $tickers_str = $tickers;
     }
-
-    // Escapar para la línea de comandos
+    
     $tickers_str = escapeshellarg($tickers_str);
-
-    // Llamar al script Python
-    $cmd = "python C:/xampp/htdocs/Invests/api/yahoo.py $tickers_str";
+    
+    // Usar DOCUMENT_ROOT para construir la ruta
+    $ruta_script = $_SERVER['DOCUMENT_ROOT'] . "/Invests/api/yahoo.py";
+    
+    // Convertir para Windows si es necesario
+    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+        $ruta_script = str_replace('/', '\\', $ruta_script);
+    }
+    
+    $cmd = "python \"" . $ruta_script . "\" " . $tickers_str;
     $output = shell_exec($cmd);
-
+    
     if (!$output) return null;
-
+    
     $data = json_decode($output, true);
-    return $data; // Devuelve todos los tickers como array asociativo
+    return $data;
 }

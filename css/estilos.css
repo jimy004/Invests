@@ -530,3 +530,13 @@ table img {
 .btn-actualizar.updating{
     animation: pulse 1.5s infinite;
 }
+
+.rentabilidad-positiva {
+    color: green;
+    font-weight: bold;
+}
+
+.rentabilidad-negativa {
+    color: red;
+    font-weight: bold;
+}

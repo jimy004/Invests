@@ -16,6 +16,7 @@ $html = '<table border="1" cellpadding="10" cellspacing="0" class="tabla-fondos"
                     <th data-col="valor_actual">Valor actual (€)</th>
                     <th data-col="cantidad">Cantidad</th>
                     <th data-col="precio_promedio">Precio promedio (€)</th>
+                    <th data-col="rentabilidad">Rentabilidad (%)</th>
                     <th data-col="valor_total">Valor total (€)</th>
                 </tr>
             </thead>
@@ -23,6 +24,20 @@ $html = '<table border="1" cellpadding="10" cellspacing="0" class="tabla-fondos"
 
 foreach ($fondos as $f) {
     $valor_total = $f['valor_actual'] * $f['cantidad'];
+    
+    // Calcular rentabilidad
+    $rentabilidad = 0;
+    if ($f['precio_promedio'] > 0) {
+        $rentabilidad = (($f['valor_actual'] - $f['precio_promedio']) / $f['precio_promedio']) * 100;
+    }
+    
+    // Determinar clase CSS según si es positiva o negativa
+    $clase_rentabilidad = '';
+    if ($rentabilidad > 0) {
+        $clase_rentabilidad = 'rentabilidad-positiva';
+    } elseif ($rentabilidad < 0) {
+        $clase_rentabilidad = 'rentabilidad-negativa';
+    }
     
     // Crear contenido para el hover-card - usar comillas dobles
     $hover_content = '<div class="hover-card-content">
@@ -41,12 +56,14 @@ foreach ($fondos as $f) {
                 data-nombre="' . htmlspecialchars($f['nombre'], ENT_QUOTES) . '"
                 data-cantidad="' . $f['cantidad'] . '"
                 data-precio_promedio="' . $f['precio_promedio'] . '"
+                data-valor_actual="' . $f['valor_actual'] . '"
                 data-moneda="' . htmlspecialchars($f['moneda'], ENT_QUOTES) . '"
                 data-riesgo="' . htmlspecialchars($f['riesgo'], ENT_QUOTES) . '"
                 data-politica="' . htmlspecialchars($f['politica'], ENT_QUOTES) . '"
                 data-tipo="' . htmlspecialchars($f['tipo'], ENT_QUOTES) . '"
                 data-gestora="' . htmlspecialchars($f['gestora'], ENT_QUOTES) . '"
                 data-geografia="' . htmlspecialchars($f['geografia'], ENT_QUOTES) . '"
+                data-rentabilidad="' . number_format($rentabilidad, 2) . '"
                 data-tipo-fila="fondo"
                 data-hover-content="' . htmlspecialchars($hover_content, ENT_QUOTES) . '"
                 style="cursor: pointer;">
@@ -55,6 +72,7 @@ foreach ($fondos as $f) {
                 <td>' . number_format($f['valor_actual'], 2) . '</td>
                 <td>' . number_format($f['cantidad'], 4) . '</td>
                 <td>' . number_format($f['precio_promedio'], 2) . '</td>
+                <td class="' . $clase_rentabilidad . '">' . number_format($rentabilidad, 2) . '%</td>
                 <td>' . number_format($valor_total, 2) . '</td>
               </tr>';
 }

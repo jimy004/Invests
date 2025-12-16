@@ -39,22 +39,42 @@ try {
     $inv_inicial_fondos = obtener_inv_inicial($conexion, 'fondo');
     $inv_inicial_liquidez =  obtener_inv_inicial($conexion, 'euros');
 
-    // Función para calcular cada fila del resumen
+    // Función para calcular cada fila del resumen con clases de color
     function calcularFila($nombre, $usd, $eur, $inv_inicial) {
         $usd = floatval($usd);
         $eur = floatval($eur);
         $inv_inicial = floatval($inv_inicial);
 
-        $rent = $inv_inicial != 0 ? (($eur - $inv_inicial)/$inv_inicial*100) : 0;
-        $dif  = $eur - $inv_inicial;
+        $rent_valor = $inv_inicial != 0 ? (($eur - $inv_inicial)/$inv_inicial*100) : 0;
+        $dif_valor  = $eur - $inv_inicial;
+
+        // Determinar clases de color para rentabilidad
+        $rent_clase = '';
+        if ($rent_valor > 0) {
+            $rent_clase = 'rentabilidad-positiva';
+        } elseif ($rent_valor < 0) {
+            $rent_clase = 'rentabilidad-negativa';
+        }
+
+        // Determinar clases de color para diferencia
+        $dif_clase = '';
+        if ($dif_valor > 0) {
+            $dif_clase = 'rentabilidad-positiva';
+        } elseif ($dif_valor < 0) {
+            $dif_clase = 'rentabilidad-negativa';
+        }
 
         return [
             'nombre' => $nombre,
             'usd' => round($usd, 2),
             'eur' => round($eur, 2),
             'inv_inicial' => round($inv_inicial, 2),
-            'rentabilidad' => round($rent, 2).'%',
-            'diferencia' => round($dif, 2),
+            'rentabilidad_valor' => $rent_valor,
+            'rentabilidad' => round($rent_valor, 2).'%',
+            'rentabilidad_clase' => $rent_clase,
+            'diferencia_valor' => $dif_valor,
+            'diferencia' => round($dif_valor, 2),
+            'diferencia_clase' => $dif_clase,
             'peso' => 0 // se calculará luego
         ];
     }

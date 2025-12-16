@@ -16,6 +16,7 @@ $html = '<table border="1" cellpadding="10" cellspacing="0" class="tabla-accione
                     <th data-col="valor_actual">Valor actual (€)</th>
                     <th data-col="cantidad">Cantidad</th>
                     <th data-col="precio_promedio">Precio promedio (€)</th>
+                    <th data-col="rentabilidad">Rentabilidad (%)</th>
                     <th data-col="valor_total">Valor total (€)</th>
                 </tr>
             </thead>
@@ -23,6 +24,20 @@ $html = '<table border="1" cellpadding="10" cellspacing="0" class="tabla-accione
 
 foreach ($acciones as $a) {
     $valor_total = $a['valor_actual'] * $a['cantidad'];
+    
+    // Calcular rentabilidad
+    $rentabilidad = 0;
+    if ($a['precio_promedio'] > 0) {
+        $rentabilidad = (($a['valor_actual'] - $a['precio_promedio']) / $a['precio_promedio']) * 100;
+    }
+    
+    // Determinar clase CSS según si es positiva o negativa
+    $clase_rentabilidad = '';
+    if ($rentabilidad > 0) {
+        $clase_rentabilidad = 'rentabilidad-positiva';
+    } elseif ($rentabilidad < 0) {
+        $clase_rentabilidad = 'rentabilidad-negativa';
+    }
     
     // Crear contenido para el hover-card - usar comillas dobles para atributos HTML
     $hover_content = '<div class="hover-card-content">
@@ -40,6 +55,7 @@ foreach ($acciones as $a) {
                 data-cantidad="' . $a['cantidad'] . '"
                 data-precio_promedio="' . $a['precio_promedio'] . '"
                 data-dividendos="' . ($a['dividendos'] ? '1' : '0') . '"
+                data-rentabilidad="' . number_format($rentabilidad, 2) . '"
                 data-tipo-fila="accion"
                 data-hover-content="' . htmlspecialchars($hover_content, ENT_QUOTES) . '"
                 style="cursor: pointer;">
@@ -48,6 +64,7 @@ foreach ($acciones as $a) {
                 <td>' . number_format($a['valor_actual'], 2) . '</td>
                 <td>' . number_format($a['cantidad'], 4) . '</td>
                 <td>' . number_format($a['precio_promedio'], 2) . '</td>
+                <td class="' . $clase_rentabilidad . '">' . number_format($rentabilidad, 2) . '%</td>
                 <td>' . number_format($valor_total, 2) . '</td>
               </tr>';
 }
