@@ -1,5 +1,5 @@
 <?php
-require "../conexion.php";
+require "../../conexion.php";
 
 $sql = "SELECT SUM(valor_actual * cantidad) as total FROM accion";
 $stmt = $conexion->prepare($sql);

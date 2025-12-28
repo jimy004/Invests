@@ -22,7 +22,7 @@ ajustarCampos();
 //----------------------------------------------------------------------------
 // Cargar tabla de criptomonedas vía AJAX
 function cargarTabla() {
-    fetch('../php/tabla_criptos_ajax.php')
+    fetch('../php/tabla_ajax/tabla_criptos_ajax.php')
         .then(response => response.text())
         .then(html => {
             document.getElementById('tablaActivos').innerHTML = html;
@@ -91,7 +91,7 @@ if (formCripto) {
         
         const formData = new FormData(this);
         
-        fetch('../php/crud_cripto.php', {
+        fetch('../php/crud/crud_cripto.php', {
             method: 'POST',
             body: formData
         })
@@ -128,7 +128,7 @@ if (formCripto) {
 //----------------------------------------------------------------------------
 // Cargar historial paginado
 function cargarHistorial(page = 1) {
-    fetch(`../php/historial_criptos.php?page=${page}`)
+    fetch(`../php/historial/historial_criptos.php?page=${page}`)
         .then(response => response.text())
         .then(html => {
             document.getElementById('historialCriptos').innerHTML = html;
@@ -142,7 +142,7 @@ cargarHistorial();
 
 //----------------------------------------------------------------------------
 // Cargar gráficos de criptomonedas
-fetch('../php/graficos_cripto.php')
+fetch('../php/graficos/graficos_cripto.php')
     .then(res => res.json())
     .then(data => {
 
@@ -274,7 +274,7 @@ if (formHistorial) {
 
         const formData = new FormData(this);
 
-        fetch('../php/crud_historial_cripto.php', {
+        fetch('../php/crud/crud_historial_cripto.php', {
             method: 'POST',
             body: formData
         })
@@ -300,7 +300,7 @@ if (formHistorial) {
 //----------------------------------------------------------------------------
 // Cargar y mostrar el valor total de criptomonedas
 function cargarTotalCriptos() {
-    fetch('../php/get_total_criptos.php')
+    fetch('../php/get/get_total_criptos.php')
         .then(response => response.text())
         .then(total => {
             const displayElement = document.getElementById('totalCriptosDisplay');
@@ -422,7 +422,7 @@ function actualizarPreciosCriptos() {
     if (btn) btn.disabled = true;
     if (statusSpan) statusSpan.textContent = 'Actualizando...';
     
-    fetch('../php/actualizar_precios_cripto.php')
+    fetch('../php/actualizar_precios/actualizar_precios_cripto.php')
         .then(response => response.json())
         .then(data => {
             if (data.success) {

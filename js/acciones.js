@@ -2,27 +2,76 @@
 // Formulario de acciones
 const accionSelectAcc = document.getElementById("accionAcc");
 const inputsAcc = document.querySelectorAll("#formAcciones input:not([name=ticker])");
+const selectSector = document.getElementById("selectSector");
 
+//----------------------------------------------------------------------------
+// Cargar sectores desde la base de datos
+function cargarSectores() {
+    fetch('../php/get/get_sectores.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.sectores) {
+                const selectSector = document.getElementById('selectSector');
+                if (selectSector) {
+                    // Guardar el valor actual
+                    const currentValue = selectSector.value;
+                    
+                    // Limpiar opciones excepto la primera
+                    while (selectSector.options.length > 1) {
+                        selectSector.remove(1);
+                    }
+                    
+                    // Agregar las opciones de la base de datos
+                    data.sectores.forEach(sector => {
+                        const option = document.createElement('option');
+                        option.value = sector;
+                        option.textContent = sector;
+                        selectSector.appendChild(option);
+                    });
+                    
+                    // Restaurar el valor seleccionado si existe
+                    if (currentValue) {
+                        selectSector.value = currentValue;
+                    }
+                }
+            }
+        })
+        .catch(error => console.error('Error al cargar sectores:', error));
+}
+
+//----------------------------------------------------------------------------
+// Ajustar campos del formulario
 function ajustarCamposAcc() {
     const accion = accionSelectAcc.value;
 
     if (accion === "insertar") {
         inputsAcc.forEach(input => input.disabled = false);
+        if (selectSector) {
+            selectSector.disabled = false;
+            selectSector.required = true;
+        }
     } else if (accion === "modificar") {
         inputsAcc.forEach(input => input.disabled = false);
+        if (selectSector) {
+            selectSector.disabled = false;
+            selectSector.required = true;
+        }
     } else if (accion === "eliminar") {
         inputsAcc.forEach(input => input.disabled = true);
+        if (selectSector) {
+            selectSector.disabled = true;
+            selectSector.required = false;
+        }
     }
 }
 
 accionSelectAcc.addEventListener("change", ajustarCamposAcc);
 ajustarCamposAcc();
 
-
 //----------------------------------------------------------------------------
 // Cargar tabla de acciones vía AJAX
 function cargarTablaAcc() {
-    fetch('../php/tabla_acciones_ajax.php')
+    fetch('../php/tabla_ajax/tabla_acciones_ajax.php')
         .then(response => response.text())
         .then(html => {
             document.getElementById('tablaAcciones').innerHTML = html;
@@ -30,6 +79,7 @@ function cargarTablaAcc() {
         })
         .catch(error => console.error('Error al cargar la tabla:', error));
 }
+
 // Cargar al inicio
 cargarTablaAcc();
 
@@ -88,7 +138,7 @@ if (formAcciones) {
         
         const formData = new FormData(this);
         
-        fetch('../php/crud_accion.php', {
+        fetch('../php/crud/crud_accion.php', {
             method: 'POST',
             body: formData
         })
@@ -124,7 +174,7 @@ if (formAcciones) {
                 ajustarCamposAcc();
                 cargarTablaAcc();
                 cargarTotalAcciones();
-                location.reload();
+                cargarSectores(); // Recargar sectores
             }
             
             document.querySelectorAll('.fila-seleccionada-accion').forEach(f => {
@@ -138,11 +188,10 @@ if (formAcciones) {
     });
 }
 
-
 //----------------------------------------------------------------------------
 // Cargar historial paginado
 function cargarHistorialAcc(page = 1) {
-    fetch(`../php/historial_acciones.php?page=${page}`)
+    fetch(`../php/historial/historial_acciones.php?page=${page}`)
         .then(response => response.text())
         .then(html => {
             document.getElementById('historialAcciones').innerHTML = html;
@@ -153,11 +202,9 @@ function cargarHistorialAcc(page = 1) {
 // Cargar al inicio
 cargarHistorialAcc();
 
-
-
 //----------------------------------------------------------------------------
 // Cargar gráficos de acciones
-fetch('../php/graficos_accion.php')
+fetch('../php/graficos/graficos_accion.php')
     .then(res => res.json())
     .then(data => {
 
@@ -186,7 +233,6 @@ fetch('../php/graficos_accion.php')
             }]
         });
 
-
         // === Rentabilidad mensual (Column) ===
         Highcharts.chart('graficoRentabilidadAcc', {
             chart: { type: 'column' },
@@ -202,7 +248,6 @@ fetch('../php/graficos_accion.php')
                 }))
             }]
         });
-
 
         // === Evolución del valor total ===
         const evolucionData = [];
@@ -228,7 +273,6 @@ fetch('../php/graficos_accion.php')
                 data: evolucionData
             }]
         });
-
     })
     .catch(err => console.error('Error al cargar gráficos:', err));
 
@@ -289,7 +333,7 @@ if (formHistorialAcc) {
         
         const formData = new FormData(this);
         
-        fetch('../php/crud_historial_accion.php', {
+        fetch('../php/crud/crud_historial_accion.php', {
             method: 'POST',
             body: formData
         })
@@ -315,7 +359,7 @@ if (formHistorialAcc) {
 //----------------------------------------------------------------------------
 // Cargar y mostrar el valor total de acciones
 function cargarTotalAcciones() {
-    fetch('../php/get_total_acciones.php')
+    fetch('../php/get/get_total_acciones.php')
         .then(response => response.text())
         .then(total => {
             const displayElement = document.getElementById('totalAccionesDisplay');
@@ -332,129 +376,114 @@ function cargarTotalAcciones() {
         });
 }
 
-// Cargar al inicio
-document.addEventListener('DOMContentLoaded', function() {
-    cargarTotalAcciones();
-});
-
-// También recargar después de enviar formularios
-const formuAcciones = document.getElementById('formAcciones');
-if (formuAcciones) {
-    formuAcciones.addEventListener('submit', function () {
-        setTimeout(cargarTotalAcciones, 500);
-    });
-}
-
-if (formHistorialAcc) {
-    formHistorialAcc.addEventListener('submit', function () {
-        setTimeout(cargarTotalAcciones, 500);
-    });
-}
-
-// Cargar también al inicio por si acaso
-cargarTotalAcciones();
-
 //----------------------------------------------------------------------------
 // Agregar funcionalidad de clic en filas de acciones
-document.addEventListener('DOMContentLoaded', function() {
-    // Función para rellenar el formulario
-    function rellenarFormularioAccion(datos) {
-        const formulario = document.getElementById('formAcciones');
-        if (!formulario) return;
-        
-        // Rellenar cada campo
-        formulario.querySelector('input[name="ticker"]').value = datos.ticker || '';
-        formulario.querySelector('input[name="nombre"]').value = datos.nombre || '';
-        formulario.querySelector('input[name="sector"]').value = datos.sector || '';
-        formulario.querySelector('input[name="cantidad"]').value = datos.cantidad || '';
-        formulario.querySelector('input[name="precio_promedio"]').value = datos.precio_promedio || '';
-        
-        // Manejar el campo de dividendos (checkbox o select)
-        const dividendosInput = formulario.querySelector('input[name="dividendos"], select[name="dividendos"]');
-        if (dividendosInput) {
-            if (dividendosInput.type === 'checkbox') {
-                dividendosInput.checked = datos.dividendos === '1' || datos.dividendos === true;
-            } else {
-                dividendosInput.value = datos.dividendos === '1' ? '1' : '0';
-            }
-        }
+function rellenarFormularioAccion(datos) {
+    const formulario = document.getElementById('formAcciones');
+    if (!formulario) return;
+    
+    // Rellenar cada campo
+    formulario.querySelector('input[name="ticker"]').value = datos.ticker || '';
+    formulario.querySelector('input[name="nombre"]').value = datos.nombre || '';
+    
+    // Rellenar el select de sector
+    const sectorSelect = formulario.querySelector('select[name="sector"]');
+    if (sectorSelect) {
+        sectorSelect.value = datos.sector || '';
     }
+    
+    formulario.querySelector('input[name="cantidad"]').value = datos.cantidad || '';
+    formulario.querySelector('input[name="precio_promedio"]').value = datos.precio_promedio || '';
+    
+    // Manejar el campo de dividendos
+    const dividendosInput = formulario.querySelector('input[name="dividendos"]');
+    if (dividendosInput && dividendosInput.type === 'checkbox') {
+        dividendosInput.checked = datos.dividendos === '1' || datos.dividendos === true;
+    }
+}
 
-    // Usar delegación de eventos para las filas de acciones
-    document.addEventListener('click', function(e) {
-        const fila = e.target.closest('.fila-accion');
+// Usar delegación de eventos para las filas de acciones
+document.addEventListener('click', function(e) {
+    const fila = e.target.closest('.fila-accion');
+    
+    if (fila) {
+        e.preventDefault();
         
-        if (fila) {
-            e.preventDefault();
-            
-            // Obtener todos los datos de la fila
-            const datosAccion = {
-                ticker: fila.getAttribute('data-ticker'),
-                nombre: fila.getAttribute('data-nombre'),
-                sector: fila.getAttribute('data-sector'),
-                valor_actual: fila.getAttribute('data-valor_actual'),
-                cantidad: fila.getAttribute('data-cantidad'),
-                precio_promedio: fila.getAttribute('data-precio_promedio'),
-                dividendos: fila.getAttribute('data-dividendos')
-            };
-            
-            // Rellenar el formulario
-            rellenarFormularioAccion(datosAccion);
-            
-            // Cambiar a modo "modificar"
-            const selectAccion = document.getElementById('accionAcc');
-            if (selectAccion) {
-                selectAccion.value = 'modificar';
-            }
-            
-            // Resaltar la fila seleccionada
-            document.querySelectorAll('.fila-accion').forEach(f => {
-                f.classList.remove('fila-seleccionada-accion');
-            });
-            fila.classList.add('fila-seleccionada-accion');
-            
-            // Mostrar mensaje
-            mostrarMensaje(`Acción "${datosAccion.nombre}" cargada en formulario`);
-            
-            // Hacer scroll al formulario
-            const formulario = document.getElementById('formAcciones');
-            if (formulario) {
-                formulario.scrollIntoView({ behavior: 'smooth' });
-            }
+        // Obtener todos los datos de la fila
+        const datosAccion = {
+            ticker: fila.getAttribute('data-ticker'),
+            nombre: fila.getAttribute('data-nombre'),
+            sector: fila.getAttribute('data-sector'),
+            valor_actual: fila.getAttribute('data-valor_actual'),
+            cantidad: fila.getAttribute('data-cantidad'),
+            precio_promedio: fila.getAttribute('data-precio_promedio'),
+            dividendos: fila.getAttribute('data-dividendos')
+        };
+        
+        // Rellenar el formulario
+        rellenarFormularioAccion(datosAccion);
+        
+        // Cambiar a modo "modificar"
+        const selectAccion = document.getElementById('accionAcc');
+        if (selectAccion) {
+            selectAccion.value = 'modificar';
         }
-    });
-
-    // Agregar botón para limpiar formulario de acciones
-    if (document.getElementById('formAcciones') && !document.getElementById('btnLimpiarAcciones')) {
-        const form = document.getElementById('formAcciones');
-        const btnSubmit = form.querySelector('button[type="submit"]');
         
-        const btnLimpiar = document.createElement('button');
-        btnLimpiar.id = 'btnLimpiarAcciones';
-        btnLimpiar.type = 'button';
-        btnLimpiar.textContent = 'Limpiar';
-        btnLimpiar.className = 'btn-limpiar';
+        // Actualizar campos
+        ajustarCamposAcc();
         
-        btnLimpiar.addEventListener('click', function() {
-            // Limpiar formulario
-            form.reset();
-            document.getElementById('accionAcc').value = 'insertar';
-            
-            // Deseleccionar filas
-            document.querySelectorAll('.fila-seleccionada-accion').forEach(f => {
-                f.classList.remove('fila-seleccionada-accion');
-            });
-            
-            // Mostrar mensaje
-            mostrarMensaje('Formulario limpiado', 'info');
+        // Resaltar la fila seleccionada
+        document.querySelectorAll('.fila-accion').forEach(f => {
+            f.classList.remove('fila-seleccionada-accion');
         });
+        fila.classList.add('fila-seleccionada-accion');
         
-        // Insertar botón después del botón de submit
-        btnSubmit.parentNode.insertBefore(btnLimpiar, btnSubmit.nextSibling);
+        // Mostrar mensaje
+        if (typeof mostrarMensaje === 'function') {
+            mostrarMensaje(`Acción "${datosAccion.nombre}" cargada en formulario`);
+        }
+        
+        // Hacer scroll al formulario
+        const formulario = document.getElementById('formAcciones');
+        if (formulario) {
+            formulario.scrollIntoView({ behavior: 'smooth' });
+        }
     }
 });
 
-// Añade esta función en acciones.js, por ejemplo después de la función cargarTablaAcc()
+// Agregar botón para limpiar formulario de acciones
+if (document.getElementById('formAcciones') && !document.getElementById('btnLimpiarAcciones')) {
+    const form = document.getElementById('formAcciones');
+    const btnSubmit = form.querySelector('button[type="submit"]');
+    
+    const btnLimpiar = document.createElement('button');
+    btnLimpiar.id = 'btnLimpiarAcciones';
+    btnLimpiar.type = 'button';
+    btnLimpiar.textContent = 'Limpiar';
+    btnLimpiar.className = 'btn-limpiar';
+    
+    btnLimpiar.addEventListener('click', function() {
+        // Limpiar formulario
+        form.reset();
+        document.getElementById('accionAcc').value = 'insertar';
+        
+        // Actualizar campos
+        ajustarCamposAcc();
+        
+        // Deseleccionar filas
+        document.querySelectorAll('.fila-seleccionada-accion').forEach(f => {
+            f.classList.remove('fila-seleccionada-accion');
+        });
+        
+        // Mostrar mensaje
+        if (typeof mostrarMensaje === 'function') {
+            mostrarMensaje('Formulario limpiado', 'info');
+        }
+    });
+    
+    // Insertar botón después del botón de submit
+    btnSubmit.parentNode.insertBefore(btnLimpiar, btnSubmit.nextSibling);
+}
 
 //----------------------------------------------------------------------------
 // Actualizar precios desde Yahoo Finance
@@ -465,7 +494,7 @@ function actualizarPreciosAcciones() {
     if (btn) btn.disabled = true;
     if (statusSpan) statusSpan.textContent = 'Actualizando...';
     
-    fetch('../php/actualizar_precios_acciones.php')
+    fetch('../php/actualizar_precios/actualizar_precios_acciones.php')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -494,13 +523,31 @@ function actualizarPreciosAcciones() {
         });
 }
 
+//----------------------------------------------------------------------------
+// Inicialización cuando el DOM está listo
 document.addEventListener('DOMContentLoaded', function() {
+    // Cargar datos iniciales
+    cargarTotalAcciones();
+    cargarSectores();
     
     // Botón para actualizar precios de acciones
     const btnActualizarAcc = document.getElementById('btnActualizarPreciosAcciones');
     if (btnActualizarAcc) {
         btnActualizarAcc.addEventListener('click', actualizarPreciosAcciones);
     }
+    
+    // También recargar después de enviar formularios
+    const formuAcciones = document.getElementById('formAcciones');
+    if (formuAcciones) {
+        formuAcciones.addEventListener('submit', function () {
+            setTimeout(cargarTotalAcciones, 500);
+            setTimeout(cargarSectores, 500);
+        });
+    }
+
+    if (formHistorialAcc) {
+        formHistorialAcc.addEventListener('submit', function () {
+            setTimeout(cargarTotalAcciones, 500);
+        });
+    }
 });
-
-

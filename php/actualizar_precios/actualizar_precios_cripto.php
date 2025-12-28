@@ -1,6 +1,6 @@
 <?php
-require "../conexion.php";
-require "../api/coingecko.php"; // Para usar la función obtenerValorActualCripto()
+require "../../conexion.php";
+require "../../api/coingecko.php"; // Para usar la función obtenerValorActualCripto()
 
 header('Content-Type: application/json');
 

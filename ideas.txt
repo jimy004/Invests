@@ -1,0 +1,16 @@
+1.watchlist
+2.calculo de precio justo para acciones (sobrevaloradas/infravaloradas)
+3.apiBinance
+4.hoja para ingresos y gastos
+5.indicadores de mercado(miedo y codicia, liquidez...)
+7.barra de progreso en inicio con objetivos
+8.tablas (para politica,tipo,Moneda,Geografía)
+9.boton para cambiar de divisa.
+10.prevision para acciones (simulaciones)
+11.graficos para inicio
+12.planificación financiera:
+ingresos y gastos
+transacciones
+patrimonio neto
+fondo de emergencia
+13. objetivo distribución

@@ -1,13 +1,13 @@
 <?php
-require "../conexion.php";
-require "../api/python_prices.php";
+require "../../conexion.php";
+require "../../api/coingecko.php";
 
 header('Content-Type: application/json');
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
     $accion = $_POST["accion"] ?? '';
-    $isin = $_POST["isin"] ?? '';
+    $ticker = $_POST["ticker"] ?? '';
     
     $response = ['success' => false, 'message' => ''];
 
@@ -19,16 +19,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             exit();
         }
 
-        // Verificar que se haya proporcionado un ISIN
-        if (empty($isin)) {
-            $response['message'] = 'ISIN es requerido';
+        // Verificar que se haya proporcionado un ticker
+        if (empty($ticker)) {
+            $response['message'] = 'Ticker es requerido';
             echo json_encode($response);
             exit();
         }
 
         if ($accion === "insertar") {
             // Validar campos requeridos
-            $campos_requeridos = ['nombre', 'cantidad', 'precio_promedio', 'moneda', 'riesgo', 'politica', 'tipo', 'gestora', 'geografia'];
+            $campos_requeridos = ['nombre', 'cantidad', 'precio_promedio'];
             foreach ($campos_requeridos as $campo) {
                 if (empty($_POST[$campo])) {
                     $response['message'] = "El campo $campo es requerido";
@@ -50,52 +50,44 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 exit();
             }
             
-            // Verificar si ya existe el ISIN
-            $checkStmt = $conexion->prepare("SELECT isin FROM fondo WHERE isin = :isin");
-            $checkStmt->bindParam(':isin', $isin);
+            // Verificar si ya existe el ticker
+            $checkStmt = $conexion->prepare("SELECT ticker FROM criptomoneda WHERE ticker = :ticker");
+            $checkStmt->bindParam(':ticker', $ticker);
             $checkStmt->execute();
             
             if ($checkStmt->rowCount() > 0) {
-                $response['message'] = 'Ya existe un fondo con este ISIN';
+                $response['message'] = 'Ya existe una criptomoneda con este ticker';
                 echo json_encode($response);
                 exit();
             }
 
-            // Obtener valor actual desde invest.py
-            $precios = obtenerValorActualPython($isin);
-            $valor_actual = $precios[$isin] ?? 0;
-
-            if ($valor_actual === 0) {
-                $response['message'] = "No se pudo obtener el valor actual de $isin";
+            // Obtener valor actual desde CoinGecko
+            $valor_actual = obtenerValorActualCripto($ticker);
+            if ($valor_actual === null || $valor_actual <= 0) {
+                $response['message'] = "No se pudo obtener el valor actual de $ticker";
                 echo json_encode($response);
                 exit();
             }
 
-            $sql = "INSERT INTO fondo
-                    (nombre, isin, logo, valor_actual, cantidad, precio_promedio, moneda, riesgo, politica, tipo, gestora, geografia)
-                    VALUES (:nombre, :isin, :logo, :valor_actual, :cantidad, :precio_promedio, :moneda, :riesgo, :politica, :tipo, :gestora, :geografia)";
+            $sql = "INSERT INTO criptomoneda
+                    (nombre, ticker, icono, valor_actual, cantidad, precio_promedio)
+                    VALUES (:nombre, :ticker, :icono, :valor_actual, :cantidad, :precio_promedio)";
             $stmt = $conexion->prepare($sql);
             $stmt->execute([
                 ":nombre" => $_POST["nombre"],
-                ":isin" => $isin,
-                ":logo" => $_POST["gestora"] . ".svg",
+                ":ticker" => $ticker,
+                ":icono" => $ticker . ".svg",
                 ":valor_actual" => $valor_actual,
                 ":cantidad" => $_POST["cantidad"],
-                ":precio_promedio" => $_POST["precio_promedio"],
-                ":moneda" => $_POST["moneda"],
-                ":riesgo" => $_POST["riesgo"],
-                ":politica" => $_POST["politica"],
-                ":tipo" => $_POST["tipo"],
-                ":gestora" => $_POST["gestora"],
-                ":geografia" => $_POST["geografia"]
+                ":precio_promedio" => $_POST["precio_promedio"]
             ]);
             
             $response['success'] = true;
-            $response['message'] = 'Fondo insertado correctamente';
+            $response['message'] = 'Criptomoneda insertada correctamente';
             
         } elseif ($accion === "modificar") {
             // Validar campos requeridos
-            $campos_requeridos = ['nombre', 'cantidad', 'precio_promedio', 'moneda', 'riesgo', 'politica', 'tipo', 'gestora', 'geografia'];
+            $campos_requeridos = ['nombre', 'cantidad', 'precio_promedio'];
             foreach ($campos_requeridos as $campo) {
                 if (empty($_POST[$campo])) {
                     $response['message'] = "El campo $campo es requerido";
@@ -117,77 +109,63 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 exit();
             }
             
-            // Verificar si existe el ISIN
-            $checkStmt = $conexion->prepare("SELECT isin FROM fondo WHERE isin = :isin");
-            $checkStmt->bindParam(':isin', $isin);
+            // Verificar si existe el ticker
+            $checkStmt = $conexion->prepare("SELECT ticker FROM criptomoneda WHERE ticker = :ticker");
+            $checkStmt->bindParam(':ticker', $ticker);
             $checkStmt->execute();
             
             if ($checkStmt->rowCount() == 0) {
-                $response['message'] = 'No existe un fondo con este ISIN';
+                $response['message'] = 'No existe una criptomoneda con este ticker';
                 echo json_encode($response);
                 exit();
             }
 
-            // Obtener valor actual desde invest.py
-            $precios = obtenerValorActualPython($isin);
-            $valor_actual = $precios[$isin] ?? 0;
-
-            if ($valor_actual === 0) {
-                $response['message'] = "No se pudo obtener el valor actual de $isin";
+            // Obtener valor actual desde CoinGecko
+            $valor_actual = obtenerValorActualCripto($ticker);
+            if ($valor_actual === null || $valor_actual <= 0) {
+                $response['message'] = "No se pudo obtener el valor actual de $ticker";
                 echo json_encode($response);
                 exit();
             }
 
-            $sql = "UPDATE fondo SET
+            $sql = "UPDATE criptomoneda SET
                     nombre = :nombre,
-                    logo = :logo,
+                    icono = :icono,
                     valor_actual = :valor_actual,
                     cantidad = :cantidad,
-                    precio_promedio = :precio_promedio,
-                    moneda = :moneda,
-                    riesgo = :riesgo,
-                    politica = :politica,
-                    tipo = :tipo,
-                    gestora = :gestora,
-                    geografia = :geografia
-                    WHERE isin = :isin";
+                    precio_promedio = :precio_promedio
+                    WHERE ticker = :ticker";
             $stmt = $conexion->prepare($sql);
             $stmt->execute([
-                ":isin" => $isin,
+                ":ticker" => $ticker,
                 ":nombre" => $_POST["nombre"],
-                ":logo" => $_POST["gestora"] . ".svg",
+                ":icono" => $ticker . ".svg",
                 ":valor_actual" => $valor_actual,
                 ":cantidad" => $_POST["cantidad"],
-                ":precio_promedio" => $_POST["precio_promedio"],
-                ":moneda" => $_POST["moneda"],
-                ":riesgo" => $_POST["riesgo"],
-                ":politica" => $_POST["politica"],
-                ":tipo" => $_POST["tipo"],
-                ":gestora" => $_POST["gestora"],
-                ":geografia" => $_POST["geografia"]
+                ":precio_promedio" => $_POST["precio_promedio"]
             ]);
             
             $response['success'] = true;
-            $response['message'] = 'Fondo modificado correctamente';
+            $response['message'] = 'Criptomoneda modificada correctamente';
             
         } elseif ($accion === "eliminar") {
-            // Verificar si existe el ISIN
-            $checkStmt = $conexion->prepare("SELECT isin FROM fondo WHERE isin = :isin");
-            $checkStmt->bindParam(':isin', $isin);
+            // Verificar si existe el ticker
+            $checkStmt = $conexion->prepare("SELECT ticker FROM criptomoneda WHERE ticker = :ticker");
+            $checkStmt->bindParam(':ticker', $ticker);
             $checkStmt->execute();
             
             if ($checkStmt->rowCount() == 0) {
-                $response['message'] = 'No existe un fondo con este ISIN';
+                $response['message'] = 'No existe una criptomoneda con este ticker';
                 echo json_encode($response);
                 exit();
             }
 
-            $sql = "DELETE FROM fondo WHERE isin = :isin";
+            $sql = "DELETE FROM criptomoneda WHERE ticker = :ticker";
             $stmt = $conexion->prepare($sql);
-            $stmt->execute([":isin" => $isin]);
+            $stmt->execute([":ticker" => $ticker]);
             
             $response['success'] = true;
-            $response['message'] = 'Fondo eliminado correctamente';
+            $response['message'] = 'Criptomoneda eliminada correctamente';
             
         } else {
             $response['message'] = 'Acción no válida';

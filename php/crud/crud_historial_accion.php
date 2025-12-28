@@ -1,5 +1,5 @@
 <?php
-require "../conexion.php";
+require "../../conexion.php";
 
 header('Content-Type: application/json');
 
@@ -25,7 +25,7 @@ try {
             }
             
             // Verificar si ya existe una entrada para esa fecha
-            $checkStmt = $conexion->prepare("SELECT fecha FROM historialfondos WHERE fecha = :fecha");
+            $checkStmt = $conexion->prepare("SELECT fecha FROM historialacciones WHERE fecha = :fecha");
             $checkStmt->bindParam(':fecha', $fecha);
             $checkStmt->execute();
             
@@ -34,7 +34,7 @@ try {
                 break;
             }
             
-            $sql = "INSERT INTO historialfondos (fecha, valor) 
+            $sql = "INSERT INTO historialacciones (fecha, valor) 
                     VALUES (:fecha, :valor)";
             $stmt = $conexion->prepare($sql);
             $stmt->bindParam(':fecha', $fecha);
@@ -55,7 +55,7 @@ try {
             }
             
             // Verificar si el registro existe
-            $checkStmt = $conexion->prepare("SELECT fecha FROM historialfondos WHERE fecha = :fecha");
+            $checkStmt = $conexion->prepare("SELECT fecha FROM historialacciones WHERE fecha = :fecha");
             $checkStmt->bindParam(':fecha', $fecha);
             $checkStmt->execute();
             
@@ -75,7 +75,7 @@ try {
                 break;
             }
             
-            $sql = "UPDATE historialfondos SET valor = :valor WHERE fecha = :fecha";
+            $sql = "UPDATE historialacciones SET valor = :valor WHERE fecha = :fecha";
             $stmt = $conexion->prepare($sql);
             $stmt->bindParam(':fecha', $fecha);
             $stmt->bindParam(':valor', $valor);
@@ -95,7 +95,7 @@ try {
             }
             
             // Verificar si el registro existe
-            $checkStmt = $conexion->prepare("SELECT fecha FROM historialfondos WHERE fecha = :fecha");
+            $checkStmt = $conexion->prepare("SELECT fecha FROM historialacciones WHERE fecha = :fecha");
             $checkStmt->bindParam(':fecha', $fecha);
             $checkStmt->execute();
             
@@ -104,7 +104,7 @@ try {
                 break;
             }
             
-            $sql = "DELETE FROM historialfondos WHERE fecha = :fecha";
+            $sql = "DELETE FROM historialacciones WHERE fecha = :fecha";
             $stmt = $conexion->prepare($sql);
             $stmt->bindParam(':fecha', $fecha);
             

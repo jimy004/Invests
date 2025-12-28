@@ -2,27 +2,76 @@
 // Formulario de fondos
 const accionSelectFond = document.getElementById("accionFond");
 const inputsFond = document.querySelectorAll("#formFondos input:not([name=isin])");
+const selectGestora = document.getElementById("selectGestora");
 
+//----------------------------------------------------------------------------
+// Cargar gestoras desde la base de datos
+function cargarGestoras() {
+    fetch('../php/get/get_gestoras.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.gestoras) {
+                const selectGestora = document.getElementById('selectGestora');
+                if (selectGestora) {
+                    // Guardar el valor actual
+                    const currentValue = selectGestora.value;
+                    
+                    // Limpiar opciones excepto la primera
+                    while (selectGestora.options.length > 1) {
+                        selectGestora.remove(1);
+                    }
+                    
+                    // Agregar las opciones de la base de datos
+                    data.gestoras.forEach(gestora => {
+                        const option = document.createElement('option');
+                        option.value = gestora;
+                        option.textContent = gestora;
+                        selectGestora.appendChild(option);
+                    });
+                    
+                    // Restaurar el valor seleccionado si existe
+                    if (currentValue) {
+                        selectGestora.value = currentValue;
+                    }
+                }
+            }
+        })
+        .catch(error => console.error('Error al cargar gestoras:', error));
+}
+
+//----------------------------------------------------------------------------
+// Ajustar campos del formulario
 function ajustarCamposFond() {
     const accion = accionSelectFond.value;
 
     if (accion === "insertar") {
         inputsFond.forEach(input => input.disabled = false);
+        if (selectGestora) {
+            selectGestora.disabled = false;
+            selectGestora.required = true;
+        }
     } else if (accion === "modificar") {
         inputsFond.forEach(input => input.disabled = false);
+        if (selectGestora) {
+            selectGestora.disabled = false;
+            selectGestora.required = true;
+        }
     } else if (accion === "eliminar") {
         inputsFond.forEach(input => input.disabled = true);
+        if (selectGestora) {
+            selectGestora.disabled = true;
+            selectGestora.required = false;
+        }
     }
 }
 
 accionSelectFond.addEventListener("change", ajustarCamposFond);
 ajustarCamposFond();
 
-
 //----------------------------------------------------------------------------
 // Cargar tabla de fondos vía AJAX
 function cargarTablaFond() {
-    fetch('../php/tabla_fondos_ajax.php')
+    fetch('../php/tabla_ajax/tabla_fondos_ajax.php')
         .then(response => response.text())
         .then(html => {
             document.getElementById('tablaFondos').innerHTML = html;
@@ -30,8 +79,6 @@ function cargarTablaFond() {
         })
         .catch(error => console.error('Error al cargar la tabla:', error));
 }
-
-    
 
 // Cargar al inicio
 cargarTablaFond();
@@ -91,7 +138,7 @@ if (formFondos) {
         
         const formData = new FormData(this);
         
-        fetch('../php/crud_fondo.php', {
+        fetch('../php/crud/crud_fondo.php', {
             method: 'POST',
             body: formData
         })
@@ -109,8 +156,8 @@ if (formFondos) {
                 cargarTablaFond();
                 // Actualizar total
                 cargarTotalFondos();
-                // Actualizar gráficos (recargando la página)
-                location.reload();
+                // Recargar gestoras
+                cargarGestoras();
             }
             // Deseleccionar filas si existían
             document.querySelectorAll('.fila-seleccionada').forEach(f => {
@@ -124,11 +171,10 @@ if (formFondos) {
     });
 }
 
-
 //----------------------------------------------------------------------------
 // Cargar historial paginado
 function cargarHistorialFond(page = 1) {
-    fetch(`../php/historial_fondos.php?page=${page}`)
+    fetch(`../php/historial/historial_fondos.php?page=${page}`)
         .then(response => response.text())
         .then(html => {
             document.getElementById('historialFondos').innerHTML = html;
@@ -139,10 +185,9 @@ function cargarHistorialFond(page = 1) {
 // Cargar al inicio
 cargarHistorialFond();
 
-
 //----------------------------------------------------------------------------
 // Cargar gráficos de fondos
-fetch('../php/graficos_fondo.php')
+fetch('../php/graficos/graficos_fondo.php')
     .then(res => res.json())
     .then(data => {
 
@@ -171,7 +216,6 @@ fetch('../php/graficos_fondo.php')
             }]
         });
 
-
         // === Rentabilidad mensual (Column) ===
         Highcharts.chart('graficoRentabilidadFond', {
             chart: { type: 'column' },
@@ -187,7 +231,6 @@ fetch('../php/graficos_fondo.php')
                 }))
             }]
         });
-
 
         // === Evolución del valor total ===
         const evolucionData = [];
@@ -213,7 +256,6 @@ fetch('../php/graficos_fondo.php')
                 data: evolucionData
             }]
         });
-
     })
     .catch(err => console.error('Error al cargar gráficos:', err));
 
@@ -282,7 +324,7 @@ if (formHistorialFond) {
             return;
         }
         
-        fetch('../php/crud_historial_fondo.php', {
+        fetch('../php/crud/crud_historial_fondo.php', {
             method: 'POST',
             body: formData
         })
@@ -308,7 +350,7 @@ if (formHistorialFond) {
 //----------------------------------------------------------------------------
 // Cargar y mostrar el valor total de fondos
 function cargarTotalFondos() {
-    fetch('../php/get_total_fondos.php')
+    fetch('../php/get/get_total_fondos.php')
         .then(response => response.text())
         .then(total => {
             const displayElement = document.getElementById('totalFondosDisplay');
@@ -325,95 +367,82 @@ function cargarTotalFondos() {
         });
 }
 
-// Cargar al inicio
-document.addEventListener('DOMContentLoaded', function() {
-    cargarTotalFondos();
-});
-
-// También recargar después de enviar formularios
-if (formFondos) {
-    formFondos.addEventListener('submit', function () {
-        setTimeout(cargarTotalFondos, 500);
-    });
-}
-
-if (formHistorialFond) {
-    formHistorialFond.addEventListener('submit', function () {
-        setTimeout(cargarTotalFondos, 500);
-    });
-}
-
-// Cargar también al inicio por si acaso
-cargarTotalFondos();
-
 //----------------------------------------------------------------------------
-// Agregar funcionalidad de clic en filas de fondos
-document.addEventListener('DOMContentLoaded', function() {
-    // Usar delegación de eventos para las filas de fondos
-    document.addEventListener('click', function(e) {
-        const fila = e.target.closest('.fila-fondo');
-        
-        if (fila) {
-            e.preventDefault();
-            
-            // Obtener todos los datos de la fila
-            const datosFondo = {
-                isin: fila.getAttribute('data-isin'),
-                nombre: fila.getAttribute('data-nombre'),
-                cantidad: fila.getAttribute('data-cantidad'),
-                precio_promedio: fila.getAttribute('data-precio_promedio'),
-                moneda: fila.getAttribute('data-moneda'),
-                riesgo: fila.getAttribute('data-riesgo'),
-                politica: fila.getAttribute('data-politica'),
-                tipo: fila.getAttribute('data-tipo'),
-                gestora: fila.getAttribute('data-gestora'),
-                geografia: fila.getAttribute('data-geografia')
-            };
-            
-            // Rellenar el formulario
-            rellenarFormularioFondo(datosFondo);
-            
-            // Cambiar a modo "modificar"
-            const selectAccion = document.getElementById('accionFond');
-            if (selectAccion) {
-                selectAccion.value = 'modificar';
-            }
-            
-            // Resaltar la fila seleccionada
-            document.querySelectorAll('.fila-fondo').forEach(f => {
-                f.classList.remove('fila-seleccionada');
-            });
-            fila.classList.add('fila-seleccionada');
-            
-            // Mostrar mensaje
-            mostrarMensaje(`Fondo "${datosFondo.nombre}" cargado en formulario`);
-            
-            // Hacer scroll al formulario
-            const formulario = document.getElementById('formFondos');
-            if (formulario) {
-                formulario.scrollIntoView({ behavior: 'smooth' });
-            }
-        }
-    });
+// Función para rellenar el formulario desde fila de la tabla
+function rellenarFormularioFondo(datos) {
+    const formulario = document.getElementById('formFondos');
+    if (!formulario) return;
     
-    // Función para rellenar el formulario
-    function rellenarFormularioFondo(datos) {
-        const formulario = document.getElementById('formFondos');
-        if (!formulario) return;
-        
-        // Rellenar cada campo
-        formulario.querySelector('input[name="isin"]').value = datos.isin || '';
-        formulario.querySelector('input[name="nombre"]').value = datos.nombre || '';
-        formulario.querySelector('input[name="cantidad"]').value = datos.cantidad || '';
-        formulario.querySelector('input[name="precio_promedio"]').value = datos.precio_promedio || '';
-        formulario.querySelector('input[name="moneda"]').value = datos.moneda || '';
-        formulario.querySelector('input[name="riesgo"]').value = datos.riesgo || '';
-        formulario.querySelector('input[name="politica"]').value = datos.politica || '';
-        formulario.querySelector('input[name="tipo"]').value = datos.tipo || '';
-        formulario.querySelector('input[name="gestora"]').value = datos.gestora || '';
-        formulario.querySelector('input[name="geografia"]').value = datos.geografia || '';
+    // Rellenar cada campo
+    formulario.querySelector('input[name="isin"]').value = datos.isin || '';
+    formulario.querySelector('input[name="nombre"]').value = datos.nombre || '';
+    formulario.querySelector('input[name="cantidad"]').value = datos.cantidad || '';
+    formulario.querySelector('input[name="precio_promedio"]').value = datos.precio_promedio || '';
+    formulario.querySelector('input[name="moneda"]').value = datos.moneda || '';
+    formulario.querySelector('input[name="riesgo"]').value = datos.riesgo || '';
+    formulario.querySelector('input[name="politica"]').value = datos.politica || '';
+    formulario.querySelector('input[name="tipo"]').value = datos.tipo || '';
+    
+    // Rellenar el select de gestora
+    const gestoraSelect = formulario.querySelector('select[name="gestora"]');
+    if (gestoraSelect) {
+        gestoraSelect.value = datos.gestora || '';
     }
+    
+    formulario.querySelector('input[name="geografia"]').value = datos.geografia || '';
+}
 
+// Usar delegación de eventos para las filas de fondos
+document.addEventListener('click', function(e) {
+    const fila = e.target.closest('.fila-fondo');
+    
+    if (fila) {
+        e.preventDefault();
+        
+        // Obtener todos los datos de la fila
+        const datosFondo = {
+            isin: fila.getAttribute('data-isin'),
+            nombre: fila.getAttribute('data-nombre'),
+            cantidad: fila.getAttribute('data-cantidad'),
+            precio_promedio: fila.getAttribute('data-precio_promedio'),
+            moneda: fila.getAttribute('data-moneda'),
+            riesgo: fila.getAttribute('data-riesgo'),
+            politica: fila.getAttribute('data-politica'),
+            tipo: fila.getAttribute('data-tipo'),
+            gestora: fila.getAttribute('data-gestora'),
+            geografia: fila.getAttribute('data-geografia')
+        };
+        
+        // Rellenar el formulario
+        rellenarFormularioFondo(datosFondo);
+        
+        // Cambiar a modo "modificar"
+        const selectAccion = document.getElementById('accionFond');
+        if (selectAccion) {
+            selectAccion.value = 'modificar';
+        }
+        
+        // Actualizar campos
+        ajustarCamposFond();
+        
+        // Resaltar la fila seleccionada
+        document.querySelectorAll('.fila-fondo').forEach(f => {
+            f.classList.remove('fila-seleccionada');
+        });
+        fila.classList.add('fila-seleccionada');
+        
+        // Mostrar mensaje
+        if (typeof mostrarMensaje === 'function') {
+            mostrarMensaje(`Fondo "${datosFondo.nombre}" cargado en formulario`);
+        }
+        
+        // Hacer scroll al formulario
+        const formulario = document.getElementById('formFondos');
+        if (formulario) {
+            formulario.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+});
 
 //----------------------------------------------------------------------------  
 // Agregar botón para limpiar formulario
@@ -432,19 +461,24 @@ if (document.getElementById('formFondos') && !document.getElementById('btnLimpia
         form.reset();
         document.getElementById('accionFond').value = 'insertar';
         
+        // Actualizar campos
+        ajustarCamposFond();
+        
         // Deseleccionar filas
         document.querySelectorAll('.fila-seleccionada').forEach(f => {
             f.classList.remove('fila-seleccionada');
         });
         
         // Mostrar mensaje
-        mostrarMensaje('Formulario limpiado', 'info');
+        if (typeof mostrarMensaje === 'function') {
+            mostrarMensaje('Formulario limpiado', 'info');
+        }
     });
     
     // Insertar botón después del botón de submit
     btnSubmit.parentNode.insertBefore(btnLimpiar, btnSubmit.nextSibling);
 }
-});
+
 //----------------------------------------------------------------------------
 // Actualizar precios desde Yahoo Finance
 function actualizarPreciosFondos() {
@@ -454,7 +488,7 @@ function actualizarPreciosFondos() {
     if (btn) btn.disabled = true;
     if (statusSpan) statusSpan.textContent = 'Actualizando...';
     
-    fetch('../php/actualizar_precios_fondos.php')
+    fetch('../php/actualizar_precios/actualizar_precios_fondos.php')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -483,9 +517,12 @@ function actualizarPreciosFondos() {
         });
 }
 
-// Añade el event listener para el botón (al final del archivo, en el DOMContentLoaded):
+//----------------------------------------------------------------------------
+// Inicialización cuando el DOM está listo
 document.addEventListener('DOMContentLoaded', function() {
-    // ... código existente ...
+    // Cargar datos iniciales
+    cargarTotalFondos();
+    cargarGestoras();
     
     // Botón para actualizar precios de fondos
     const btnActualizarFondos = document.getElementById('btnActualizarPreciosFondos');
@@ -493,5 +530,17 @@ document.addEventListener('DOMContentLoaded', function() {
         btnActualizarFondos.addEventListener('click', actualizarPreciosFondos);
     }
     
-    // ... resto del código existente ...
+    // También recargar después de enviar formularios
+    if (formFondos) {
+        formFondos.addEventListener('submit', function () {
+            setTimeout(cargarTotalFondos, 500);
+            setTimeout(cargarGestoras, 500);
+        });
+    }
+
+    if (formHistorialFond) {
+        formHistorialFond.addEventListener('submit', function () {
+            setTimeout(cargarTotalFondos, 500);
+        });
+    }
 });

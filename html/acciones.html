@@ -25,7 +25,7 @@
             </ul>
         </nav>
 
-        <form id="formAcciones" method="post" action="../php/crud_accion.php">
+        <form id="formAcciones" method="post" action="../php/crud/crud_accion.php">
             <label>Acción:
                 <select name="accion" id="accionAcc">
                     <option value="insertar">Insertar</option>
@@ -39,7 +39,10 @@
             </div>
 
             <input type="text" name="nombre" placeholder="Nombre de la empresa">
-            <input type="text" name="sector" placeholder="Sector">
+            <select name="sector" id="selectSector" required>
+                <option value="">Selecciona un sector</option>
+                <!-- Los sectores se cargarán dinámicamente con JavaScript -->
+            </select>
             <input type="number" step="0.000001" name="cantidad" placeholder="Cantidad de acciones">
             <input type="number" step="0.01" name="precio_promedio" placeholder="Precio promedio (€)">
 
@@ -67,7 +70,7 @@
         <div id="graficoEvolucionAcc" style="width:100%; height:400px;"></div>
 
         <h2 id="Historial">Historial</h2>
-        <form id="formHistorialAcc" method="post" action="../php/crud_historial_accion.php">
+        <form id="formHistorialAcc" method="post" action="../php/crud/crud_historial_accion.php">
             <label>Acción:
                 <select name="accion" id="accionHistorialAcc">
                     <option value="insertar">Insertar</option>

@@ -1,5 +1,5 @@
 <?php
-require "../conexion.php";
+require "../../conexion.php";
 
 header('Content-Type: application/json');
 
@@ -7,7 +7,6 @@ header('Content-Type: application/json');
 $accion = $_POST['accion'] ?? '';
 $fecha = $_POST['fecha'] ?? '';
 $valor = $_POST['valor'] ?? null;
-$cantidadBTC = $_POST['cantidadBTC'] ?? null;
 
 $response = ['success' => false, 'message' => ''];
 
@@ -19,8 +18,14 @@ try {
                 break;
             }
             
+            // Validar que el valor sea positivo
+            if ($valor <= 0) {
+                $response['message'] = 'El valor debe ser mayor que 0';
+                break;
+            }
+            
             // Verificar si ya existe una entrada para esa fecha
-            $checkStmt = $conexion->prepare("SELECT fecha FROM historialcriptos WHERE fecha = :fecha");
+            $checkStmt = $conexion->prepare("SELECT fecha FROM historialfondos WHERE fecha = :fecha");
             $checkStmt->bindParam(':fecha', $fecha);
             $checkStmt->execute();
             
@@ -29,16 +34,15 @@ try {
                 break;
             }
             
-            $sql = "INSERT INTO historialcriptos (fecha, valor, cantidadBTC) 
-                    VALUES (:fecha, :valor, :cantidadBTC)";
+            $sql = "INSERT INTO historialfondos (fecha, valor) 
+                    VALUES (:fecha, :valor)";
             $stmt = $conexion->prepare($sql);
             $stmt->bindParam(':fecha', $fecha);
             $stmt->bindParam(':valor', $valor);
-            $stmt->bindParam(':cantidadBTC', $cantidadBTC);
             
             if ($stmt->execute()) {
                 $response['success'] = true;
-                $response['message'] = 'Registro insertado correctamente';
+                $response['message'] = 'Registro de historial insertado correctamente';
             } else {
                 $response['message'] = 'Error al insertar registro';
             }
@@ -51,7 +55,7 @@ try {
             }
             
             // Verificar si el registro existe
-            $checkStmt = $conexion->prepare("SELECT fecha FROM historialcriptos WHERE fecha = :fecha");
+            $checkStmt = $conexion->prepare("SELECT fecha FROM historialfondos WHERE fecha = :fecha");
             $checkStmt->bindParam(':fecha', $fecha);
             $checkStmt->execute();
             
@@ -60,30 +64,21 @@ try {
                 break;
             }
             
-            $campos = [];
-            $params = [];
-            
-            if ($valor !== null) {
-                $campos[] = "valor = :valor";
-                $params[':valor'] = $valor;
-            }
-            if ($cantidadBTC !== null) {
-                $campos[] = "cantidadBTC = :cantidadBTC";
-                $params[':cantidadBTC'] = $cantidadBTC;
-            }
-            
-            if (empty($campos)) {
-                $response['message'] = 'No hay campos para modificar';
+            if ($valor === null) {
+                $response['message'] = 'El valor es requerido para modificar';
                 break;
             }
             
-            $sql = "UPDATE historialcriptos SET " . implode(', ', $campos) . " WHERE fecha = :fecha";
+            // Validar que el valor sea positivo
+            if ($valor <= 0) {
+                $response['message'] = 'El valor debe ser mayor que 0';
+                break;
+            }
+            
+            $sql = "UPDATE historialfondos SET valor = :valor WHERE fecha = :fecha";
             $stmt = $conexion->prepare($sql);
             $stmt->bindParam(':fecha', $fecha);
-            
-            foreach ($params as $key => $value) {
-                $stmt->bindValue($key, $value);
-            }
+            $stmt->bindParam(':valor', $valor);
             
             if ($stmt->execute()) {
                 $response['success'] = true;
@@ -100,7 +95,7 @@ try {
             }
             
             // Verificar si el registro existe
-            $checkStmt = $conexion->prepare("SELECT fecha FROM historialcriptos WHERE fecha = :fecha");
+            $checkStmt = $conexion->prepare("SELECT fecha FROM historialfondos WHERE fecha = :fecha");
             $checkStmt->bindParam(':fecha', $fecha);
             $checkStmt->execute();
             
@@ -109,7 +104,7 @@ try {
                 break;
             }
             
-            $sql = "DELETE FROM historialcriptos WHERE fecha = :fecha";
+            $sql = "DELETE FROM historialfondos WHERE fecha = :fecha";
             $stmt = $conexion->prepare($sql);
             $stmt->bindParam(':fecha', $fecha);
             

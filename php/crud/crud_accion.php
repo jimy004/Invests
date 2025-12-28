@@ -1,7 +1,7 @@
 <?php
-require "../conexion.php";
-require "../api/python_prices.php";
-require "../api/usd_eur.php";
+require "../../conexion.php";
+require "../../api/python_prices.php";
+require "../../api/usd_eur.php";
 
 header('Content-Type: application/json');
 

@@ -38,7 +38,7 @@ async function cargarResumen() {
 async function cargarInversionesSelect() {
     const select = document.getElementById('inversion');
     try {
-        const res = await fetch('../php/get_inversiones.php');
+        const res = await fetch('../php/get/get_inversiones.php');
         const inversiones = await res.json();
         select.innerHTML = '';
         inversiones.forEach(inv => {
@@ -139,13 +139,13 @@ async function actualizarPreciosTipo(tipo) {
     
     switch(tipo) {
         case 'criptomonedas':
-            url = '../php/actualizar_precios_cripto.php';
+            url = '../php/actualizar_precios/actualizar_precios_cripto.php';
             break;
         case 'acciones':
-            url = '../php/actualizar_precios_acciones.php';
+            url = '../php/actualizar_precios/actualizar_precios_acciones.php';
             break;
         case 'fondos':
-            url = '../php/actualizar_precios_fondos.php';
+            url = '../php/actualizar_precios/actualizar_precios_fondos.php';
             break;
         default:
             throw new Error('Tipo no válido');

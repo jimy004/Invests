@@ -1,5 +1,5 @@
 <?php
-require "../conexion.php";
+require "../../conexion.php";
 
 $sql = "SELECT * FROM criptomoneda";
 $stmt = $conexion->prepare($sql);

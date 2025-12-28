@@ -25,7 +25,7 @@
             </ul>
         </nav>
 
-        <form id="formFondos" method="post" action="../php/crud_fondo.php">
+        <form id="formFondos" method="post" action="../php/crud/crud_fondo.php">
             <label>Acción:
                 <select name="accion" id="accionFond">
                     <option value="insertar">Insertar</option>
@@ -45,7 +45,10 @@
             <input type="number" name="riesgo" placeholder="Riesgo (1-7)">
             <input type="text" name="politica" placeholder="Política (Acumulación/Distribución)">
             <input type="text" name="tipo" placeholder="Tipo (Índice/Mixto/Renta Fija/Renta Variable)">
-            <input type="text" name="gestora" placeholder="Gestora">
+            <select name="gestora" id="selectGestora" required>
+                <option value="">Selecciona una gestora</option>
+                <!-- Las gestoras se cargarán dinámicamente con JavaScript -->
+            </select>
             <input type="text" name="geografia" placeholder="Geografía">
 
             <button type="submit">Ejecutar</button>
@@ -68,7 +71,7 @@
         <div id="graficoEvolucionFond" style="width:100%; height:400px;"></div>
 
         <h2 id="Historial">Historial</h2>
-        <form id="formHistorialFond" method="post" action="../php/crud_historial_fondo.php">
+        <form id="formHistorialFond" method="post" action="../php/crud/crud_historial_fondo.php">
             <label>Acción:
                 <select name="accion" id="accionHistorialFond">
                     <option value="insertar">Insertar</option>

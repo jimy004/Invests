@@ -1,5 +1,5 @@
 <?php
-require "../conexion.php";
+require "../../conexion.php";
 
 // Obtener todas las acciones
 $sql = "SELECT * FROM accion";

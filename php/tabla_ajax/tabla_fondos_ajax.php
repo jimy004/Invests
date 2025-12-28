@@ -1,5 +1,5 @@
 <?php
-require "../conexion.php";
+require "../../conexion.php";
 
 // Obtener todos los fondos
 $sql = "SELECT * FROM fondo";

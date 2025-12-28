@@ -4,7 +4,7 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 header('Content-Type: application/json');
-require __DIR__ . "/../conexion.php";
+require __DIR__ . "/../../conexion.php";
 
 // --- 1️⃣ Distribución de activos ---
 $sql = "SELECT nombre, valor_actual, cantidad FROM criptomoneda";

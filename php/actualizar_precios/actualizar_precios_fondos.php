@@ -1,6 +1,6 @@
 <?php
-require "../conexion.php";
-require "../api/python_prices.php"; // Para usar la función obtenerValorActualPython()
+require "../../conexion.php";
+require "../../api/python_prices.php"; // Para usar la función obtenerValorActualPython()
 
 header('Content-Type: application/json');
 

@@ -1,8 +1,8 @@
 <?php
 // actualizar_todos_precios.php
-require "../conexion.php";
-require "coingecko.php";
-require "python_prices.php";
+require "../../conexion.php";
+require "../../api/coingecko.php";
+require "../../api/python_prices.php";
 
 header('Content-Type: application/json');
 

@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-include '../conexion.php';
+include '../../conexion.php';
 
 try {
     $stmt = $conexion->query("SELECT id, tipo FROM inversiones");
