@@ -2,6 +2,7 @@
 // Formulario de fondos
 const accionSelectFond = document.getElementById("accionFond");
 const inputsFond = document.querySelectorAll("#formFondos input:not([name=isin])");
+const selectsFond = document.querySelectorAll("#formFondos select:not(#accionFond)");
 const selectGestora = document.getElementById("selectGestora");
 
 //----------------------------------------------------------------------------
@@ -46,18 +47,21 @@ function ajustarCamposFond() {
 
     if (accion === "insertar") {
         inputsFond.forEach(input => input.disabled = false);
+        selectsFond.forEach(select => select.disabled = false);
         if (selectGestora) {
             selectGestora.disabled = false;
             selectGestora.required = true;
         }
     } else if (accion === "modificar") {
         inputsFond.forEach(input => input.disabled = false);
+        selectsFond.forEach(select => select.disabled = false);
         if (selectGestora) {
             selectGestora.disabled = false;
             selectGestora.required = true;
         }
     } else if (accion === "eliminar") {
         inputsFond.forEach(input => input.disabled = true);
+        selectsFond.forEach(select => select.disabled = true);
         if (selectGestora) {
             selectGestora.disabled = true;
             selectGestora.required = false;
@@ -366,7 +370,6 @@ function cargarTotalFondos() {
             }
         });
 }
-
 //----------------------------------------------------------------------------
 // Función para rellenar el formulario desde fila de la tabla
 function rellenarFormularioFondo(datos) {
@@ -378,10 +381,26 @@ function rellenarFormularioFondo(datos) {
     formulario.querySelector('input[name="nombre"]').value = datos.nombre || '';
     formulario.querySelector('input[name="cantidad"]').value = datos.cantidad || '';
     formulario.querySelector('input[name="precio_promedio"]').value = datos.precio_promedio || '';
-    formulario.querySelector('input[name="moneda"]').value = datos.moneda || '';
+    
+    // Para select de moneda
+    const monedaSelect = formulario.querySelector('select[name="moneda"]');
+    if (monedaSelect) {
+        monedaSelect.value = datos.moneda || '';
+    }
+    
     formulario.querySelector('input[name="riesgo"]').value = datos.riesgo || '';
-    formulario.querySelector('input[name="politica"]').value = datos.politica || '';
-    formulario.querySelector('input[name="tipo"]').value = datos.tipo || '';
+    
+    // Para select de política
+    const politicaSelect = formulario.querySelector('select[name="politica"]');
+    if (politicaSelect) {
+        politicaSelect.value = datos.politica || '';
+    }
+    
+    // Para select de tipo
+    const tipoSelect = formulario.querySelector('select[name="tipo"]');
+    if (tipoSelect) {
+        tipoSelect.value = datos.tipo || '';
+    }
     
     // Rellenar el select de gestora
     const gestoraSelect = formulario.querySelector('select[name="gestora"]');
@@ -389,7 +408,11 @@ function rellenarFormularioFondo(datos) {
         gestoraSelect.value = datos.gestora || '';
     }
     
-    formulario.querySelector('input[name="geografia"]').value = datos.geografia || '';
+    // Para select de geografía
+    const geografiaSelect = formulario.querySelector('select[name="geografia"]');
+    if (geografiaSelect) {
+        geografiaSelect.value = datos.geografia || '';
+    }
 }
 
 // Usar delegación de eventos para las filas de fondos

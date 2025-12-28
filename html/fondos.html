@@ -41,15 +41,80 @@
             <input type="text" name="nombre" placeholder="Nombre del fondo">
             <input type="number" step="0.00001" name="cantidad" placeholder="Cantidad de participaciones">
             <input type="number" step="0.01" name="precio_promedio" placeholder="Precio promedio (€)">
-            <input type="text" name="moneda" placeholder="Moneda">
-            <input type="number" name="riesgo" placeholder="Riesgo (1-7)">
-            <input type="text" name="politica" placeholder="Política (Acumulación/Distribución)">
-            <input type="text" name="tipo" placeholder="Tipo (Índice/Mixto/Renta Fija/Renta Variable)">
+            <select name="moneda" required>
+                <option value="">Selecciona moneda</option>
+                <option value="EUR">Euro (€) - EUR</option>
+                <option value="USD">Dólar estadounidense ($) - USD</option>
+                <option value="GBP">Libra esterlina (£) - GBP</option>
+                <option value="CHF">Franco suizo (CHF) - CHF</option>
+                <option value="JPY">Yen japonés (¥) - JPY</option>
+                <option value="CAD">Dólar canadiense ($) - CAD</option>
+                <option value="AUD">Dólar australiano ($) - AUD</option>
+                <option value="CNY">Yuan chino (¥) - CNY</option>
+                <option value="MXN">Peso mexicano ($) - MXN</option>
+                <option value="BRL">Real brasileño (R$) - BRL</option>
+                <option value="OTRA">Otra moneda</option>
+            </select>
+            <input type="number" name="riesgo" placeholder="Riesgo" min="1" max="7">
+            <select name="politica" required>
+                <option value="">Selecciona política</option>
+                <option value="Acumulación">Acumulación</option>
+                <option value="Distribución">Distribución</option>
+            </select>
+
+            <select name="tipo" required>
+                <option value="">Selecciona tipo</option>
+                <option value="Índice">Índice</option>
+                <option value="Mixto">Mixto</option>
+                <option value="Renta Fija">Renta Fija</option>
+                <option value="Renta Variable">Renta Variable</option>
+            </select>
             <select name="gestora" id="selectGestora" required>
                 <option value="">Selecciona una gestora</option>
                 <!-- Las gestoras se cargarán dinámicamente con JavaScript -->
             </select>
-            <input type="text" name="geografia" placeholder="Geografía">
+            <select name="geografia" required>
+                <option value="">Selecciona geografía</option>
+                <optgroup label="Global/Regionales">
+                    <option value="Global">Global</option>
+                    <option value="Europa">Europa</option>
+                    <option value="Eurozona">Eurozona</option>
+                    <option value="América">América</option>
+                    <option value="Asia-Pacífico">Asia-Pacífico</option>
+                    <option value="Emergentes">Mercados Emergentes</option>
+                    <option value="Desarrollados">Mercados Desarrollados</option>
+                </optgroup>
+                <optgroup label="Europa">
+                    <option value="España">España</option>
+                    <option value="Alemania">Alemania</option>
+                    <option value="Francia">Francia</option>
+                    <option value="Reino Unido">Reino Unido</option>
+                    <option value="Italia">Italia</option>
+                    <option value="Países Nórdicos">Países Nórdicos</option>
+                    <option value="Suiza">Suiza</option>
+                </optgroup>
+                <optgroup label="América">
+                    <option value="Estados Unidos">Estados Unidos</option>
+                    <option value="Canadá">Canadá</option>
+                    <option value="Latinoamérica">Latinoamérica</option>
+                    <option value="México">México</option>
+                    <option value="Brasil">Brasil</option>
+                </optgroup>
+                <optgroup label="Asia-Pacífico">
+                    <option value="Japón">Japón</option>
+                    <option value="China">China</option>
+                    <option value="India">India</option>
+                    <option value="Australia">Australia</option>
+                    <option value="Corea del Sur">Corea del Sur</option>
+                    <option value="Taiwán">Taiwán</option>
+                    <option value="Sudeste Asiático">Sudeste Asiático</option>
+                </optgroup>
+                <optgroup label="Otras">
+                    <option value="Oriente Medio">Oriente Medio</option>
+                    <option value="África">África</option>
+                    <option value="OTRA">Otra geografía</option>
+                </optgroup>
+            </select>
 
             <button type="submit">Ejecutar</button>
         </form>
@@ -91,9 +156,9 @@
     </main>
     <div id="footer"></div>
     <script src="../js/varios.js"></script>
-    <script src="../js/fondos.js"></script>
     <script src="https://code.highcharts.com/highcharts.js"></script>
     <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+    <script src="../js/fondos.js"></script>
 </body>
 
 </html>

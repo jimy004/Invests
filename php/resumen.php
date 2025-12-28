@@ -80,8 +80,8 @@ try {
     }
 
     $resumen = [];
-    $resumen[] = calcularFila('Criptomonedas', $usd_criptos, $eur_criptos, $inv_inicial_criptos);
     $resumen[] = calcularFila('Acciones', $usd_acciones, $eur_acciones, $inv_inicial_acciones);
+    $resumen[] = calcularFila('Criptomonedas', $usd_criptos, $eur_criptos, $inv_inicial_criptos);
     $resumen[] = calcularFila('Fondos', $usd_fondos, $eur_fondos, $inv_inicial_fondos);
     $resumen[] = calcularFila('Liquidez', $usd_liquidez, $eur_liquidez, $inv_inicial_liquidez);
 
