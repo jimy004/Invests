@@ -1,0 +1,52 @@
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1549 1555" width="1549" height="1555">
+	<title>ELE</title>
+	<defs>
+		<linearGradient id="g1" x2="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-145.602,-250.259,132.966,-77.361,1418.116,577.397)">
+			<stop offset="0" stop-color="#0255f9"/>
+			<stop offset="1" stop-color="#0255f9"/>
+		</linearGradient>
+		<linearGradient id="g2" x2="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-385.739,-159.46,72.94,-176.445,1213.995,264.756)">
+			<stop offset="0" stop-color="#0255f9"/>
+			<stop offset="1" stop-color="#1976f1"/>
+		</linearGradient>
+		<linearGradient id="g3" x2="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(388.779,-165.534,75.815,178.063,335.301,271.252)">
+			<stop offset="0" stop-color="#2386ee"/>
+			<stop offset="1" stop-color="#1976f1"/>
+		</linearGradient>
+		<linearGradient id="g4" x2="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(159.253,-382.211,175.641,73.183,108.104,723.549)">
+			<stop offset="0" stop-color="#2d98ea"/>
+			<stop offset="1" stop-color="#2386ee"/>
+		</linearGradient>
+		<linearGradient id="g5" x2="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(165.321,385.246,-177.215,76.049,106.935,834.3)">
+			<stop offset="0" stop-color="#2d98ea"/>
+			<stop offset="1" stop-color="#3cabe7"/>
+		</linearGradient>
+		<linearGradient id="g6" x2="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(451.581,184.739,-84.303,206.072,308.675,1277.17)">
+			<stop offset="0" stop-color="#3cabe7"/>
+			<stop offset="1" stop-color="#41b7e4"/>
+		</linearGradient>
+		<linearGradient id="g7" x2="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(456.891,-503.515,323.581,293.618,779.096,1629.409)">
+			<stop offset="0" stop-color="#41b7e4" stop-opacity="1"/>
+			<stop offset=".27" stop-color="#41b7e4" stop-opacity="1"/>
+			<stop offset="1" stop-color="#41b7e4" stop-opacity="0"/>
+		</linearGradient>
+	</defs>
+	<style>
+		.s0 { fill: url(#g1) } 
+		.s1 { fill: url(#g2) } 
+		.s2 { fill: url(#g3) } 
+		.s3 { fill: url(#g4) } 
+		.s4 { fill: url(#g5) } 
+		.s5 { fill: url(#g6) } 
+		.s6 { fill: url(#g7) } 
+		.s7 { fill: #c5c5c5 } 
+	</style>
+	<path class="s0" d="m1162.3 387.8c70.9 69 123.3 157.2 148.2 255.6h236.9 0.7c-28.8-163.6-108.6-309.2-222.9-421z"/>
+	<path class="s1" d="m772.7 0.1l1.9 231.9q2 0 4.5 0c150.7 0 287.4 61.3 387.1 159.7l164.1-164.2c-141.2-140.5-336.6-227.4-551.2-227.4q-3.2 0-6.4 0z"/>
+	<path class="s2" d="m224.1 232.6l165.4 162.9c99-100.9 237-163.5 389.6-163.5v-231.9c-217.1 0-413.9 89.4-555 232.5z"/>
+	<path class="s3" d="m0.6 777.5q0 3.8 0 7l232.4-1.9q0-2.5 0-5.1c0-150.8 61.3-286.8 160.3-385.2l-164.7-164.1c-140.5 140.5-228 334.7-228 549.3z"/>
+	<path class="s4" d="m0.6 777.5c0 217.2 89.4 413.9 233.1 554.5l162.8-165.5c-100.9-99-163.5-236.3-163.5-389z"/>
+	<path class="s5" d="m228.6 1327.5c141.1 140.5 335.9 227.4 550.5 227.4q3.8 0 7 0l-1.9-231.9q-2.5 0-5.1 0c-150.7 0-287.4-60.7-385.8-159.7z"/>
+	<path class="s6" d="m779.1 1323v231.9c251.7 0 475.2-118.8 617.6-304.1l-183.9-141.1c-100.3 129.6-256.8 213.3-433.7 213.3z"/>
+	<path fill-rule="evenodd" class="s7" d="m1548.1 643.4v232.5h-813.7v-232.5z"/>
+</svg>
