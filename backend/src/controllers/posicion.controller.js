@@ -105,7 +105,9 @@ async function enrichPosicionWithMarketData(posicion, tickerQuoteCache) {
   const valorTotalOrigen = Math.max(0, cantidad * Math.max(0, precioActualOrigen));
   const valorTotalConvertido = Math.max(0, cantidad * precioActualConvertido);
   const rentabilidad =
-    precioPromedio > 0 ? ((precioActualOrigen - precioPromedio) / precioPromedio) * 100 : 0;
+    precioPromedio > 0
+      ? ((precioActualConvertido - precioPromedio) / precioPromedio) * 100
+      : 0;
 
   return {
     ...posicion,

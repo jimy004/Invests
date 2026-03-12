@@ -526,6 +526,8 @@ export default function App() {
     return mappedIconFromTicker;
   };
   const resolvePosicionLogoSrc = (posicion) => {
+    const gestoraIcon = resolveGestoraIconSrc(posicion, posicion);
+    if (gestoraIcon) return gestoraIcon;
     const rawIcon = String(posicion?.activo_icono || "").trim();
     if (isHttpUrl(rawIcon) || rawIcon.startsWith("/icons/")) return rawIcon;
     return buildLocalIconFromTicker(posicion?.ticker);
