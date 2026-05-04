@@ -79,6 +79,10 @@ async function enrichPosicionWithMarketData(posicion, tickerQuoteCache) {
   let precioActualOrigen = precioPromedio;
   let variacionDiaria = null;
   let monedaOrigenTicker = null;
+  let capitalizacion = null;
+  let volumen = null;
+  let moneda = null;
+  let mercado = null;
   if (ticker) {
     if (!tickerQuoteCache.has(ticker)) {
       try {
@@ -91,9 +95,15 @@ async function enrichPosicionWithMarketData(posicion, tickerQuoteCache) {
     const quote = tickerQuoteCache.get(ticker);
     const cachedPrice = Number(quote?.precio || 0);
     const cachedVariacion = Number(quote?.variacion_porcentual);
+    const cachedCap = Number(quote?.capitalizacion);
+    const cachedVol = Number(quote?.volumen);
     precioActualOrigen = Number.isFinite(cachedPrice) && cachedPrice > 0 ? cachedPrice : precioPromedio;
     variacionDiaria = Number.isFinite(cachedVariacion) ? cachedVariacion : null;
-    monedaOrigenTicker = normalizeTicker(quote?.moneda) || null;
+    capitalizacion = Number.isFinite(cachedCap) && cachedCap > 0 ? cachedCap : null;
+    volumen = Number.isFinite(cachedVol) && cachedVol > 0 ? cachedVol : null;
+    moneda = quote?.moneda ? String(quote.moneda) : null;
+    mercado = quote?.mercado ? String(quote.mercado) : null;
+    monedaOrigenTicker = normalizeTicker(moneda) || null;
   }
 
   const monedaPortafolioTicker = normalizeTicker(posicion?.portafolio_moneda_ticker) || monedaOrigenTicker;
@@ -118,6 +128,10 @@ async function enrichPosicionWithMarketData(posicion, tickerQuoteCache) {
     precio_actual_moneda_ticker: monedaPortafolioTicker || monedaOrigenTicker || null,
     conversion_rate: fxRate,
     variacion_diaria: variacionDiaria,
+    capitalizacion,
+    volumen,
+    moneda,
+    mercado,
     rentabilidad,
     valor_total_origen: valorTotalOrigen,
     valor_total: valorTotalConvertido

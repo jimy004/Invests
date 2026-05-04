@@ -13,7 +13,6 @@ import {
   eliminarPortfolioSnapshot,
   eliminarTodasNotificacionesUsuario,
   eliminarCashFlow,
-  eliminarActivo,
   eliminarOrden,
   eliminarPortafolio,
   getActivos,
@@ -50,6 +49,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
   Legend,
   Line,
   LineChart,
@@ -147,7 +147,6 @@ export default function App() {
   const [ordenComision, setOrdenComision] = useState("0");
   const [ordenObservacion, setOrdenObservacion] = useState("");
   const [loadingActivoYahoo, setLoadingActivoYahoo] = useState(false);
-  const [activoYahooTicker, setActivoYahooTicker] = useState("");
   const [showZeroPosiciones, setShowZeroPosiciones] = useState(false);
   const [currentPage, setCurrentPage] = useState("inicio");
   const [settingsMonedaId, setSettingsMonedaId] = useState("");
@@ -190,17 +189,12 @@ export default function App() {
   const [unreadNotificaciones, setUnreadNotificaciones] = useState(0);
   const [loadingNotificaciones, setLoadingNotificaciones] = useState(false);
   const [settingsAutoSaveMessage, setSettingsAutoSaveMessage] = useState("");
-  const [selectedActivoId, setSelectedActivoId] = useState("");
-  const [detalleAccionActivo, setDetalleAccionActivo] = useState(null);
-  const [detalleFondoActivo, setDetalleFondoActivo] = useState(null);
-  const [loadingDetalleActivo, setLoadingDetalleActivo] = useState(false);
   const [expandedPosicionId, setExpandedPosicionId] = useState(null);
   const [detalleAccionPosicion, setDetalleAccionPosicion] = useState(null);
   const [detalleFondoPosicion, setDetalleFondoPosicion] = useState(null);
   const [loadingDetallePosicion, setLoadingDetallePosicion] = useState(false);
   const [portafoliosPage, setPortafoliosPage] = useState(1);
   const [ordenesPage, setOrdenesPage] = useState(1);
-  const [activosPage, setActivosPage] = useState(1);
   const [movimientosPage, setMovimientosPage] = useState(1);
   const [snapshotsPage, setSnapshotsPage] = useState(1);
   const [notificacionesPage, setNotificacionesPage] = useState(1);
@@ -217,12 +211,17 @@ export default function App() {
   const [inicioPortfolioKeys, setInicioPortfolioKeys] = useState([]);
   const [inicioRentabilidadSeries, setInicioRentabilidadSeries] = useState([]);
   const [hiddenInicioPortfolioKeys, setHiddenInicioPortfolioKeys] = useState({});
+  const [inicioPortfolioChartMode, setInicioPortfolioChartMode] = useState("line");
+  const [inicioRentabilidadChartMode, setInicioRentabilidadChartMode] = useState("line");
   const [loadingPosicionCharts, setLoadingPosicionCharts] = useState(false);
   const [posicionesEvolutionSeries, setPosicionesEvolutionSeries] = useState([]);
   const [posicionesEvolutionKeys, setPosicionesEvolutionKeys] = useState([]);
   const [selectedPosicionChartKey, setSelectedPosicionChartKey] = useState("");
   const [visiblePosicionChartKeys, setVisiblePosicionChartKeys] = useState([]);
   const [posicionesRentabilidadSeries, setPosicionesRentabilidadSeries] = useState([]);
+  const [posicionesEvolutionChartMode, setPosicionesEvolutionChartMode] = useState("line");
+  const [posicionesRentabilidadChartMode, setPosicionesRentabilidadChartMode] = useState("line");
+  const [posicionesPesoChartMode, setPosicionesPesoChartMode] = useState("posiciones");
   const [loadingNoticias, setLoadingNoticias] = useState(false);
   const [noticiasRecientes, setNoticiasRecientes] = useState([]);
   const [noticiasFetchedAt, setNoticiasFetchedAt] = useState("");
@@ -317,6 +316,42 @@ export default function App() {
       {direction === "left" ? "\u2190" : "\u2192"}
     </span>
   );
+  const PIE_LABEL_MIN_PERCENT = 0.04;
+  const renderPiePercentLabel = ({ percent }) => {
+    const pct = Number(percent || 0) * 100;
+    if (!Number.isFinite(pct) || pct < PIE_LABEL_MIN_PERCENT * 100) return "";
+    return `${pct.toFixed(0)}%`;
+  };
+  const buildPiePercentTooltipFormatter =
+    (total, label = "Peso") =>
+    (value) => {
+      const numeric = Number(value || 0);
+      const pct = total ? (numeric / total) * 100 : 0;
+      return [`${pct.toFixed(2)}%`, label];
+    };
+  const buildMonthlySeriesLastPoint = (points) => {
+    const list = Array.isArray(points) ? points : [];
+    const byMonth = new Map();
+
+    for (const point of list) {
+      const fecha = String(point?.fecha || "").trim();
+      const match = fecha.match(/^(\d{4}-\d{2})/);
+      if (!match) continue;
+      const monthKey = match[1];
+      const existing = byMonth.get(monthKey);
+      if (!existing || String(point?.fecha || "") > String(existing?.fecha || "")) {
+        byMonth.set(monthKey, point);
+      }
+    }
+
+    return Array.from(byMonth.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([monthKey, point]) => ({
+        ...point,
+        mes: monthKey,
+        mes_label: `${monthKey.slice(5, 7)}/${monthKey.slice(0, 4)}`
+      }));
+  };
   const buildPosicionesEvolution = (snapshotRows, totalRows = []) => {
     const normalizeDateTimeKey = (value) => {
       const raw = String(value || "").trim();
@@ -581,7 +616,6 @@ export default function App() {
       setSnapshotIntervalPosicion("1440");
       setNotificaciones([]);
       setUnreadNotificaciones(0);
-      setSelectedActivoId("");
       setLoadingPosicionCharts(false);
       setPosicionesEvolutionSeries([]);
       setPosicionesEvolutionKeys([]);
@@ -663,7 +697,6 @@ export default function App() {
     setSnapshotIntervalPosicion("1440");
     setNotificaciones([]);
     setUnreadNotificaciones(0);
-    setSelectedActivoId("");
     setLoadingPosicionCharts(false);
     setPosicionesEvolutionSeries([]);
     setPosicionesEvolutionKeys([]);
@@ -682,14 +715,6 @@ export default function App() {
     if (!usuario) return;
     setSettingsMonedaId(usuario.moneda_id ? String(usuario.moneda_id) : "");
   }, [usuario]);
-
-  useEffect(() => {
-    if (!selectedActivoId) return;
-    const exists = activos.some((activo) => String(activo.id) === String(selectedActivoId));
-    if (!exists) {
-      setSelectedActivoId("");
-    }
-  }, [activos, selectedActivoId]);
 
   function clearPortafolioForm() {
     setPfNombre("");
@@ -771,28 +796,6 @@ export default function App() {
     }
   }
 
-  async function handleDeleteActivoSeleccionado() {
-    if (!selectedActivo) return;
-    const confirmed = window.confirm(
-      "Se eliminara el activo seleccionado. Deseas continuar?"
-    );
-    if (!confirmed) return;
-
-    setLoadingData(true);
-    setError("");
-    setMessage("");
-    try {
-      await eliminarActivo(selectedActivo.id);
-      setMessage("Activo eliminado");
-      setSelectedActivoId("");
-      await loadActivosData({ silent: true });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoadingData(false);
-    }
-  }
-
   async function loadDashboardData(currentUsuario, { silent = false } = {}) {
     if (!silent) {
       setLoadingData(true);
@@ -864,19 +867,6 @@ export default function App() {
   }, [usuario?.moneda_id, cashFlowMonedaId]);
 
   useEffect(() => {
-    if (!usuario || currentPage !== "activos") return;
-    loadActivosData();
-  }, [usuario, currentPage]);
-
-  useEffect(() => {
-    if (!usuario || currentPage !== "activos") return;
-    const intervalId = setInterval(() => {
-      loadActivosData({ silent: true });
-    }, 60000);
-    return () => clearInterval(intervalId);
-  }, [usuario, currentPage]);
-
-  useEffect(() => {
     if (!usuario || currentPage !== "inicio") return;
     const intervalId = setInterval(() => {
       loadDashboardData(usuario, { silent: true });
@@ -893,65 +883,7 @@ export default function App() {
   }, [usuario, currentPage]);
 
   useEffect(() => {
-    if (!usuario || currentPage !== "activos" || !selectedActivoId) {
-      setDetalleAccionActivo(null);
-      setDetalleFondoActivo(null);
-      setLoadingDetalleActivo(false);
-      return;
-    }
-
-    const activoSeleccionado = activos.find(
-      (activo) => String(activo.id) === String(selectedActivoId)
-    );
-    if (!activoSeleccionado) {
-      setDetalleAccionActivo(null);
-      setDetalleFondoActivo(null);
-      setLoadingDetalleActivo(false);
-      return;
-    }
-
-    const categoriaId = Number(activoSeleccionado.categoria_id || 0);
-    if (categoriaId !== 2 && categoriaId !== 3) {
-      setDetalleAccionActivo(null);
-      setDetalleFondoActivo(null);
-      setLoadingDetalleActivo(false);
-      return;
-    }
-
-    let cancelled = false;
-    setLoadingDetalleActivo(true);
-    (async () => {
-      try {
-        if (categoriaId === 2) {
-          const list = await getDetallesAccionByActivo(activoSeleccionado.id);
-          if (!cancelled) {
-            setDetalleAccionActivo(Array.isArray(list) && list.length ? list[0] : null);
-            setDetalleFondoActivo(null);
-          }
-          return;
-        }
-        const list = await getDetallesFondoByActivo(activoSeleccionado.id);
-        if (!cancelled) {
-          setDetalleFondoActivo(Array.isArray(list) && list.length ? list[0] : null);
-          setDetalleAccionActivo(null);
-        }
-      } catch {
-        if (!cancelled) {
-          setDetalleAccionActivo(null);
-          setDetalleFondoActivo(null);
-        }
-      } finally {
-        if (!cancelled) setLoadingDetalleActivo(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [usuario, currentPage, selectedActivoId, activos]);
-
-  useEffect(() => {
-    if (!usuario || currentPage !== "inicio" || !expandedPosicionId) {
+    if (!usuario || currentPage !== "portafolio" || !expandedPosicionId) {
       setDetalleAccionPosicion(null);
       setDetalleFondoPosicion(null);
       setLoadingDetallePosicion(false);
@@ -1040,7 +972,6 @@ export default function App() {
   useEffect(() => {
     setPortafoliosPage(1);
     setOrdenesPage(1);
-    setActivosPage(1);
     setMovimientosPage(1);
     setSnapshotsPage(1);
     setNotificacionesPage(1);
@@ -1180,6 +1111,13 @@ export default function App() {
       return posicionesEvolutionKeys[0]?.key || "";
     });
   }, [posicionesEvolutionKeys]);
+
+  useEffect(() => {
+    if (Number(selectedPortafolio?.categoria_id || 0) === 2) return;
+    if (posicionesPesoChartMode !== "posiciones") {
+      setPosicionesPesoChartMode("posiciones");
+    }
+  }, [selectedPortafolio?.categoria_id, posicionesPesoChartMode]);
 
   useEffect(() => {
     if (!settingsAutoSaveMessage) return;
@@ -1447,26 +1385,6 @@ export default function App() {
     setMessage("");
     try {
       await importActivoPorTicker(ordenActivoTicker);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoadingActivoYahoo(false);
-    }
-  }
-
-  async function handleImportActivoDesdeYahooEnActivos() {
-    setLoadingActivoYahoo(true);
-    setError("");
-    setMessage("");
-    try {
-      const activoId = await importActivoPorTicker(activoYahooTicker, {
-        silent: true,
-        setOrderFields: false
-      });
-      await loadActivosData({ silent: true });
-      setSelectedActivoId(String(activoId));
-      setActivoYahooTicker("");
-      setMessage("Activo importado desde Yahoo Finance");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1885,15 +1803,6 @@ export default function App() {
   const sortedPortfolioSnapshots = portfolioSnapshots
     .slice()
     .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
-  const sortedActivos = activos.slice().sort((a, b) => {
-    const direction = activosSort.direction === "asc" ? 1 : -1;
-    if (activosSort.key === "precio") {
-      return (Number(a.precio || 0) - Number(b.precio || 0)) * direction;
-    }
-    const valueA = String(a?.[activosSort.key] || "");
-    const valueB = String(b?.[activosSort.key] || "");
-    return valueA.localeCompare(valueB, "es", { sensitivity: "base" }) * direction;
-  });
   const sortedPosiciones = posiciones.slice().sort((a, b) => {
     const direction = posicionesSort.direction === "asc" ? 1 : -1;
     if (posicionesSort.key === "variacion_diaria") {
@@ -1924,11 +1833,6 @@ export default function App() {
     acc[key].push(snapshot);
     return acc;
   }, {});
-  const selectedActivo =
-    activos.find((activo) => String(activo.id) === String(selectedActivoId)) || null;
-  const selectedAssetIconSrc = selectedActivo
-    ? resolveAssetIconSrc(selectedActivo, detalleFondoActivo)
-    : null;
   const visiblePosiciones = showZeroPosiciones
     ? sortedPosiciones
     : sortedPosiciones.filter((posicion) => Number(posicion.cantidad || 0) > 0);
@@ -1997,6 +1901,37 @@ export default function App() {
     }
     return top;
   })();
+  const posicionesPesoTotal = posicionesPesoData.reduce((sum, item) => sum + Number(item?.valor || 0), 0);
+  const posicionesSectorPesoDataRaw = Object.entries(
+    activePosiciones
+      .filter((posicion) => Number(posicion?.valor_total || 0) > 0)
+      .reduce((acc, posicion) => {
+        const sector = String(posicion?.sector_nombre || "").trim() || "Sin sector";
+        acc[sector] = Number(acc[sector] || 0) + Number(posicion?.valor_total || 0);
+        return acc;
+      }, {})
+  )
+    .map(([nombre, valor]) => ({ nombre, valor: Number(valor || 0) }))
+    .filter((item) => item.valor > 0)
+    .sort((a, b) => b.valor - a.valor);
+  const posicionesSectorPesoData = (() => {
+    const top = posicionesSectorPesoDataRaw.slice(0, 7);
+    const othersValue = posicionesSectorPesoDataRaw
+      .slice(7)
+      .reduce((sum, item) => sum + Number(item?.valor || 0), 0);
+    if (othersValue > 0) {
+      top.push({ nombre: "Otros", valor: othersValue });
+    }
+    return top;
+  })();
+  const posicionesSectorPesoTotal = posicionesSectorPesoData.reduce(
+    (sum, item) => sum + Number(item?.valor || 0),
+    0
+  );
+  const posicionesPesoChartData =
+    posicionesPesoChartMode === "sector" ? posicionesSectorPesoData : posicionesPesoData;
+  const posicionesPesoChartTotal =
+    posicionesPesoChartMode === "sector" ? posicionesSectorPesoTotal : posicionesPesoTotal;
   const expandedPosicion =
     visiblePosiciones.find((posicion) => String(posicion.id) === String(expandedPosicionId)) || null;
   const expandedPosicionActivo = expandedPosicion
@@ -2088,6 +2023,7 @@ export default function App() {
     }
     return top;
   })();
+  const resumenPieTotal = resumenPieData.reduce((sum, item) => sum + Number(item?.valor || 0), 0);
   const cashFlowCurrencyTicker = cashFlowResumen?.moneda_ticker || monedaResumenTicker || "";
   const cashFlowCalendarNow = new Date();
   const cashFlowCalendarYear = cashFlowCalendarCursor.getFullYear();
@@ -2179,6 +2115,14 @@ export default function App() {
       valor: Number(valor || 0)
     }))
     .sort((a, b) => b.valor - a.valor);
+  const cashFlowCategoriasIngresosMesTotal = cashFlowCategoriasIngresosMes.reduce(
+    (sum, item) => sum + Number(item?.valor || 0),
+    0
+  );
+  const cashFlowCategoriasGastosMesTotal = cashFlowCategoriasGastosMes.reduce(
+    (sum, item) => sum + Number(item?.valor || 0),
+    0
+  );
   const cashFlowMensualAnualData = Array.from({ length: 12 }, (_, monthIndex) => ({
     mes: new Intl.DateTimeFormat("es-ES", { month: "short" }).format(
       new Date(cashFlowCalendarYear, monthIndex, 1)
@@ -2265,7 +2209,6 @@ export default function App() {
     });
   const totalPortafoliosPages = Math.max(1, Math.ceil(portafolios.length / LIST_PAGE_SIZE));
   const totalOrdenesPages = Math.max(1, Math.ceil(sortedOrdenes.length / LIST_PAGE_SIZE));
-  const totalActivosPages = Math.max(1, Math.ceil(sortedActivos.length / LIST_PAGE_SIZE));
   const totalMovimientosPages = Math.max(1, Math.ceil(sortedCashFlows.length / LIST_PAGE_SIZE));
   const totalSnapshotsPages = Math.max(
     1,
@@ -2277,17 +2220,12 @@ export default function App() {
   );
   const currentPortafoliosPage = Math.min(portafoliosPage, totalPortafoliosPages);
   const currentOrdenesPage = Math.min(ordenesPage, totalOrdenesPages);
-  const currentActivosPage = Math.min(activosPage, totalActivosPages);
   const currentMovimientosPage = Math.min(movimientosPage, totalMovimientosPages);
   const currentSnapshotsPage = Math.min(snapshotsPage, totalSnapshotsPages);
   const currentNotificacionesPage = Math.min(notificacionesPage, totalNotificacionesPages);
   const pagedPortafolios = portafolios.slice(
     (currentPortafoliosPage - 1) * LIST_PAGE_SIZE,
     currentPortafoliosPage * LIST_PAGE_SIZE
-  );
-  const pagedActivos = sortedActivos.slice(
-    (currentActivosPage - 1) * LIST_PAGE_SIZE,
-    currentActivosPage * LIST_PAGE_SIZE
   );
   const pagedOrdenes = sortedOrdenes.slice(
     (currentOrdenesPage - 1) * LIST_PAGE_SIZE,
@@ -2410,6 +2348,11 @@ export default function App() {
     );
   }
 
+  const inicioPortfolioMonthlySeries = buildMonthlySeriesLastPoint(inicioPortfolioSeries);
+  const inicioRentabilidadMonthlySeries = buildMonthlySeriesLastPoint(inicioRentabilidadSeries);
+  const posicionesEvolutionMonthlySeries = buildMonthlySeriesLastPoint(posicionesEvolutionSeries);
+  const posicionesRentabilidadMonthlySeries = buildMonthlySeriesLastPoint(posicionesRentabilidadSeries);
+
   const mainContent = usuario ? (
     <>
       {currentPage === "inicio" ? (
@@ -2502,7 +2445,14 @@ export default function App() {
                   <div className="chartWrap">
                     <ResponsiveContainer width="100%" height={320}>
                       <PieChart>
-                        <Pie data={resumenPieData} dataKey="valor" nameKey="categoria" outerRadius={112}>
+                        <Pie
+                          data={resumenPieData}
+                          dataKey="valor"
+                          nameKey="categoria"
+                          outerRadius={112}
+                          labelLine={false}
+                          label={renderPiePercentLabel}
+                        >
                           {resumenPieData.map((entry, index) => (
                             <Cell
                               key={`resumen-pie-${entry.categoria}-${index}`}
@@ -2510,12 +2460,7 @@ export default function App() {
                             />
                           ))}
                         </Pie>
-                        <Tooltip
-                          formatter={(value) => [
-                            `${Number(value || 0).toFixed(2)} ${monedaResumenTicker}`,
-                            "Valor"
-                          ]}
-                        />
+                        <Tooltip formatter={buildPiePercentTooltipFormatter(resumenPieTotal)} />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
@@ -2524,7 +2469,31 @@ export default function App() {
               </article>
 
               <article className="chartCard chartCardWide">
-                <h3>Evolución del valor total por portafolios</h3>
+                <div className="chartCardHeader">
+                  <button
+                    type="button"
+                    className={`buttonSecondary chartToggleButton${
+                      inicioPortfolioChartMode === "line" ? " chartToggleButtonActive" : ""
+                    }`}
+                    onClick={() => setInicioPortfolioChartMode("line")}
+                    title="Ver como líneas"
+                    aria-label="Ver como líneas"
+                  >
+                    Línea
+                  </button>
+                  <h3>Evolución del valor total por portafolios</h3>
+                  <button
+                    type="button"
+                    className={`buttonSecondary chartToggleButton${
+                      inicioPortfolioChartMode === "bar" ? " chartToggleButtonActive" : ""
+                    }`}
+                    onClick={() => setInicioPortfolioChartMode("bar")}
+                    title="Ver como columnas"
+                    aria-label="Ver como columnas"
+                  >
+                    Columnas
+                  </button>
+                </div>
                 {loadingInicioCharts ? (
                   <p className="chartNoData">Cargando series de snapshots...</p>
                 ) : inicioPortfolioSeries.length === 0 ? (
@@ -2532,61 +2501,136 @@ export default function App() {
                 ) : (
                   <div className="chartWrap">
                     <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={inicioPortfolioSeries}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="fecha_label" />
-                        <YAxis />
-                        <Tooltip
-                          formatter={(value) => [
-                            `${Number(value || 0).toFixed(2)} ${monedaResumenTicker}`,
-                            "Valor"
-                          ]}
-                        />
-                        <Legend
-                          onClick={handleInicioPortfolioLegendClick}
-                          formatter={(value, entry) => {
-                            const hidden = Boolean(hiddenInicioPortfolioKeys[String(entry?.dataKey || "")]);
-                            return (
-                              <span
-                                style={{
-                                  opacity: hidden ? 0.45 : 1,
-                                  textDecoration: hidden ? "line-through" : "none",
-                                  cursor: String(entry?.dataKey || "").startsWith("pf_") ? "pointer" : "default"
-                                }}
-                              >
-                                {value}
-                              </span>
-                            );
-                          }}
-                        />
-                        {inicioPortfolioKeys.map((portfolio) => (
-                          <Line
-                            key={portfolio.key}
-                            type="monotone"
-                            dataKey={portfolio.key}
-                            name={portfolio.label}
-                            stroke={portfolio.color}
-                            strokeWidth={1.8}
-                            dot={false}
-                            hide={Boolean(hiddenInicioPortfolioKeys[portfolio.key])}
+                      {inicioPortfolioChartMode === "bar" ? (
+                        <ComposedChart data={inicioPortfolioMonthlySeries}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="mes_label" />
+                          <YAxis />
+                          <Tooltip
+                            formatter={(value) => [
+                              `${Number(value || 0).toFixed(2)} ${monedaResumenTicker}`,
+                              "Valor"
+                            ]}
                           />
-                        ))}
-                        <Line
-                          type="monotone"
-                          dataKey="total"
-                          name="Total"
-                          stroke="#0f172a"
-                          strokeWidth={2.5}
-                          dot={false}
-                        />
-                      </LineChart>
+                          <Legend
+                            onClick={handleInicioPortfolioLegendClick}
+                            formatter={(value, entry) => {
+                              const hidden = Boolean(hiddenInicioPortfolioKeys[String(entry?.dataKey || "")]);
+                              return (
+                                <span
+                                  style={{
+                                    opacity: hidden ? 0.45 : 1,
+                                    textDecoration: hidden ? "line-through" : "none",
+                                    cursor: String(entry?.dataKey || "").startsWith("pf_")
+                                      ? "pointer"
+                                      : "default"
+                                  }}
+                                >
+                                  {value}
+                                </span>
+                              );
+                            }}
+                          />
+                          {inicioPortfolioKeys.map((portfolio) => (
+                            <Bar
+                              key={portfolio.key}
+                              dataKey={portfolio.key}
+                              name={portfolio.label}
+                              fill={portfolio.color}
+                              stackId="pf"
+                              hide={Boolean(hiddenInicioPortfolioKeys[portfolio.key])}
+                            />
+                          ))}
+                          <Line
+                            type="monotone"
+                            dataKey="total"
+                            name="Total"
+                            stroke="#0f172a"
+                            strokeWidth={2.4}
+                            dot={false}
+                          />
+                        </ComposedChart>
+                      ) : (
+                        <LineChart data={inicioPortfolioSeries}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="fecha_label" />
+                          <YAxis />
+                          <Tooltip
+                            formatter={(value) => [
+                              `${Number(value || 0).toFixed(2)} ${monedaResumenTicker}`,
+                              "Valor"
+                            ]}
+                          />
+                          <Legend
+                            onClick={handleInicioPortfolioLegendClick}
+                            formatter={(value, entry) => {
+                              const hidden = Boolean(hiddenInicioPortfolioKeys[String(entry?.dataKey || "")]);
+                              return (
+                                <span
+                                  style={{
+                                    opacity: hidden ? 0.45 : 1,
+                                    textDecoration: hidden ? "line-through" : "none",
+                                    cursor: String(entry?.dataKey || "").startsWith("pf_") ? "pointer" : "default"
+                                  }}
+                                >
+                                  {value}
+                                </span>
+                              );
+                            }}
+                          />
+                          {inicioPortfolioKeys.map((portfolio) => (
+                            <Line
+                              key={portfolio.key}
+                              type="monotone"
+                              dataKey={portfolio.key}
+                              name={portfolio.label}
+                              stroke={portfolio.color}
+                              strokeWidth={1.8}
+                              dot={false}
+                              hide={Boolean(hiddenInicioPortfolioKeys[portfolio.key])}
+                            />
+                          ))}
+                          <Line
+                            type="monotone"
+                            dataKey="total"
+                            name="Total"
+                            stroke="#0f172a"
+                            strokeWidth={2.5}
+                            dot={false}
+                          />
+                        </LineChart>
+                      )}
                     </ResponsiveContainer>
                   </div>
                 )}
               </article>
 
               <article className="chartCard chartCardWide">
-                <h3>Evolución de la rentabilidad</h3>
+                <div className="chartCardHeader">
+                  <button
+                    type="button"
+                    className={`buttonSecondary chartToggleButton${
+                      inicioRentabilidadChartMode === "line" ? " chartToggleButtonActive" : ""
+                    }`}
+                    onClick={() => setInicioRentabilidadChartMode("line")}
+                    title="Ver como líneas"
+                    aria-label="Ver como líneas"
+                  >
+                    Línea
+                  </button>
+                  <h3>Evolución de la rentabilidad</h3>
+                  <button
+                    type="button"
+                    className={`buttonSecondary chartToggleButton${
+                      inicioRentabilidadChartMode === "bar" ? " chartToggleButtonActive" : ""
+                    }`}
+                    onClick={() => setInicioRentabilidadChartMode("bar")}
+                    title="Ver como columnas"
+                    aria-label="Ver como columnas"
+                  >
+                    Columnas
+                  </button>
+                </div>
                 {loadingInicioCharts ? (
                   <p className="chartNoData">Cargando rentabilidad...</p>
                 ) : inicioRentabilidadSeries.length === 0 ? (
@@ -2594,23 +2638,36 @@ export default function App() {
                 ) : (
                   <div className="chartWrap">
                     <ResponsiveContainer width="100%" height={260}>
-                      <LineChart data={inicioRentabilidadSeries}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="fecha_label" />
-                        <YAxis />
-                        <Tooltip
-                          formatter={(value) => [`${Number(value || 0).toFixed(2)}%`, "Rentabilidad"]}
-                        />
-                        <Legend />
-                        <Line
-                          type="monotone"
-                          dataKey="rentabilidad"
-                          name="Rentabilidad total"
-                          stroke="#16a34a"
-                          strokeWidth={2.4}
-                          dot={false}
-                        />
-                      </LineChart>
+                      {inicioRentabilidadChartMode === "bar" ? (
+                        <BarChart data={inicioRentabilidadMonthlySeries}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="mes_label" />
+                          <YAxis />
+                          <Tooltip
+                            formatter={(value) => [`${Number(value || 0).toFixed(2)}%`, "Rentabilidad"]}
+                          />
+                          <Legend />
+                          <Bar dataKey="rentabilidad" name="Rentabilidad total" fill="#16a34a" />
+                        </BarChart>
+                      ) : (
+                        <LineChart data={inicioRentabilidadSeries}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="fecha_label" />
+                          <YAxis />
+                          <Tooltip
+                            formatter={(value) => [`${Number(value || 0).toFixed(2)}%`, "Rentabilidad"]}
+                          />
+                          <Legend />
+                          <Line
+                            type="monotone"
+                            dataKey="rentabilidad"
+                            name="Rentabilidad total"
+                            stroke="#16a34a"
+                            strokeWidth={2.4}
+                            dot={false}
+                          />
+                        </LineChart>
+                      )}
                     </ResponsiveContainer>
                   </div>
                 )}
@@ -3131,11 +3188,15 @@ export default function App() {
                                         </p>
                                         <p>
                                           <strong>Capitalizacion:</strong>{" "}
-                                          {formatLargeNumberOrDashZero(expandedPosicionActivo?.capitalizacion)}
+                                          {formatLargeNumberOrDashZero(
+                                            expandedPosicionActivo?.capitalizacion ?? expandedPosicion?.capitalizacion
+                                          )}
                                         </p>
                                         <p>
                                           <strong>Volumen:</strong>{" "}
-                                          {formatLargeNumberOrDashZero(expandedPosicionActivo?.volumen)}
+                                          {formatLargeNumberOrDashZero(
+                                            expandedPosicionActivo?.volumen ?? expandedPosicion?.volumen
+                                          )}
                                         </p>
                                         <p>
                                           <strong>Variacion:</strong>{" "}
@@ -3145,10 +3206,12 @@ export default function App() {
                                           )}
                                         </p>
                                         <p>
-                                          <strong>Moneda:</strong> {expandedPosicionActivo?.moneda || "-"}
+                                          <strong>Moneda:</strong>{" "}
+                                          {expandedPosicionActivo?.moneda || expandedPosicion?.moneda || "-"}
                                         </p>
                                         <p>
-                                          <strong>Mercado:</strong> {expandedPosicionActivo?.mercado || "-"}
+                                          <strong>Mercado:</strong>{" "}
+                                          {expandedPosicionActivo?.mercado || expandedPosicion?.mercado || "-"}
                                         </p>
                                       </div>
                                       {Number(expandedPosicionActivo?.categoria_id || 0) === 2 ? (
@@ -3224,7 +3287,31 @@ export default function App() {
                   <h3>Graficos de posiciones</h3>
                   <div className="dashboardChartsGrid">
                     <article className="chartCard chartCardWide">
-                      <h3>Evolucion total por posiciones</h3>
+                      <div className="chartCardHeader">
+                        <button
+                          type="button"
+                          className={`buttonSecondary chartToggleButton${
+                            posicionesEvolutionChartMode === "line" ? " chartToggleButtonActive" : ""
+                          }`}
+                          onClick={() => setPosicionesEvolutionChartMode("line")}
+                          title="Ver como líneas"
+                          aria-label="Ver como líneas"
+                        >
+                          Línea
+                        </button>
+                        <h3>Evolucion total por posiciones</h3>
+                        <button
+                          type="button"
+                          className={`buttonSecondary chartToggleButton${
+                            posicionesEvolutionChartMode === "bar" ? " chartToggleButtonActive" : ""
+                          }`}
+                          onClick={() => setPosicionesEvolutionChartMode("bar")}
+                          title="Ver como columnas"
+                          aria-label="Ver como columnas"
+                        >
+                          Columnas
+                        </button>
+                      </div>
                       <div className="actionsRow chartControlsRow">
                         <select
                           className="chartSelect"
@@ -3273,7 +3360,7 @@ export default function App() {
                           })}
                         </div>
                       ) : (
-                        <p className="chartNoData">Solo se muestra la linea Total. Anade posiciones para compararlas.</p>
+                        <p className="chartNoData">Solo se muestra Total. Añade posiciones para compararlas.</p>
                       )}
                       {loadingPosicionCharts ? (
                         <p className="chartNoData">Cargando snapshots de posiciones...</p>
@@ -3282,56 +3369,113 @@ export default function App() {
                       ) : (
                         <div className="chartWrap">
                           <ResponsiveContainer width="100%" height={320}>
-                            <LineChart data={posicionesEvolutionSeries}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="fecha_label" />
-                              <YAxis />
-                              <Tooltip formatter={(value) => [`${Number(value || 0).toFixed(2)}`, "Valor"]} />
-                              <Legend />
-                              {posicionesEvolutionKeys
-                                .filter((serie) => visiblePosicionChartKeys.includes(serie.key))
-                                .map((serie) => (
+                            {posicionesEvolutionChartMode === "bar" ? (
+                              <BarChart data={posicionesEvolutionMonthlySeries}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="mes_label" />
+                                <YAxis />
+                                <Tooltip formatter={(value) => [`${Number(value || 0).toFixed(2)}`, "Valor"]} />
+                                <Legend />
+                                {posicionesEvolutionKeys
+                                  .filter((serie) => visiblePosicionChartKeys.includes(serie.key))
+                                  .map((serie) => (
+                                    <Bar
+                                      key={serie.key}
+                                      dataKey={serie.key}
+                                      name={serie.label}
+                                      fill={serie.color}
+                                    />
+                                  ))}
+                                <Bar dataKey="total" name="Total" fill="#0f172a" />
+                              </BarChart>
+                            ) : (
+                              <LineChart data={posicionesEvolutionSeries}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="fecha_label" />
+                                <YAxis />
+                                <Tooltip formatter={(value) => [`${Number(value || 0).toFixed(2)}`, "Valor"]} />
+                                <Legend />
+                                {posicionesEvolutionKeys
+                                  .filter((serie) => visiblePosicionChartKeys.includes(serie.key))
+                                  .map((serie) => (
+                                    <Line
+                                      key={serie.key}
+                                      type="monotone"
+                                      dataKey={serie.key}
+                                      name={serie.label}
+                                      stroke={serie.color}
+                                      strokeWidth={1.8}
+                                      dot={false}
+                                    />
+                                  ))}
                                 <Line
-                                  key={serie.key}
                                   type="monotone"
-                                  dataKey={serie.key}
-                                  name={serie.label}
-                                  stroke={serie.color}
-                                  strokeWidth={1.8}
+                                  dataKey="total"
+                                  name="Total"
+                                  stroke="#0f172a"
+                                  strokeWidth={2.5}
                                   dot={false}
                                 />
-                                ))}
-                              <Line
-                                type="monotone"
-                                dataKey="total"
-                                name="Total"
-                                stroke="#0f172a"
-                                strokeWidth={2.5}
-                                dot={false}
-                              />
-                            </LineChart>
+                              </LineChart>
+                            )}
                           </ResponsiveContainer>
                         </div>
                       )}
                     </article>
 
                     <article className="chartCard chartCardWide">
-                      <h3>Peso de las posiciones</h3>
-                      {posicionesPesoData.length === 0 ? (
-                        <p className="chartNoData">No hay posiciones con valor para mostrar.</p>
+                      <div className="chartCardHeader">
+                        <button
+                          type="button"
+                          className={`buttonSecondary chartToggleButton${
+                            posicionesPesoChartMode === "posiciones" ? " chartToggleButtonActive" : ""
+                          }`}
+                          onClick={() => setPosicionesPesoChartMode("posiciones")}
+                          title="Peso por posiciones"
+                          aria-label="Peso por posiciones"
+                        >
+                          Posiciones
+                        </button>
+                        <h3>
+                          {posicionesPesoChartMode === "sector" ? "Peso por sector" : "Peso por posiciones"}
+                        </h3>
+                        <button
+                          type="button"
+                          className={`buttonSecondary chartToggleButton${
+                            posicionesPesoChartMode === "sector" ? " chartToggleButtonActive" : ""
+                          }`}
+                          onClick={() => setPosicionesPesoChartMode("sector")}
+                          disabled={Number(selectedPortafolio?.categoria_id || 0) !== 2}
+                          title="Peso por sector"
+                          aria-label="Peso por sector"
+                        >
+                          Sector
+                        </button>
+                      </div>
+                      {posicionesPesoChartData.length === 0 ? (
+                        <p className="chartNoData">No hay datos con valor para mostrar.</p>
                       ) : (
                         <div className="chartWrap">
                           <ResponsiveContainer width="100%" height={320}>
                             <PieChart>
-                              <Pie data={posicionesPesoData} dataKey="valor" nameKey="nombre" outerRadius={112}>
-                                {posicionesPesoData.map((entry, index) => (
+                              <Pie
+                                data={posicionesPesoChartData}
+                                dataKey="valor"
+                                nameKey="nombre"
+                                outerRadius={112}
+                                labelLine={false}
+                                label={renderPiePercentLabel}
+                              >
+                                {posicionesPesoChartData.map((entry, index) => (
                                   <Cell
                                     key={`pos-pie-${entry.nombre}-${index}`}
                                     fill={CHART_COLORS[index % CHART_COLORS.length]}
                                   />
                                 ))}
                               </Pie>
-                              <Tooltip formatter={(value) => [Number(value || 0).toFixed(2), "Valor"]} />
+                              <Tooltip
+                                formatter={buildPiePercentTooltipFormatter(posicionesPesoChartTotal)}
+                              />
                               <Legend />
                             </PieChart>
                           </ResponsiveContainer>
@@ -3340,7 +3484,31 @@ export default function App() {
                     </article>
 
                     <article className="chartCard chartCardWide">
-                      <h3>Evolucion de la rentabilidad del portafolio</h3>
+                      <div className="chartCardHeader">
+                        <button
+                          type="button"
+                          className={`buttonSecondary chartToggleButton${
+                            posicionesRentabilidadChartMode === "line" ? " chartToggleButtonActive" : ""
+                          }`}
+                          onClick={() => setPosicionesRentabilidadChartMode("line")}
+                          title="Ver como líneas"
+                          aria-label="Ver como líneas"
+                        >
+                          Línea
+                        </button>
+                        <h3>Evolucion de la rentabilidad del portafolio</h3>
+                        <button
+                          type="button"
+                          className={`buttonSecondary chartToggleButton${
+                            posicionesRentabilidadChartMode === "bar" ? " chartToggleButtonActive" : ""
+                          }`}
+                          onClick={() => setPosicionesRentabilidadChartMode("bar")}
+                          title="Ver como columnas"
+                          aria-label="Ver como columnas"
+                        >
+                          Columnas
+                        </button>
+                      </div>
                       {loadingPosicionCharts ? (
                         <p className="chartNoData">Cargando rentabilidad...</p>
                       ) : posicionesRentabilidadSeries.length === 0 ? (
@@ -3348,23 +3516,36 @@ export default function App() {
                       ) : (
                         <div className="chartWrap">
                           <ResponsiveContainer width="100%" height={260}>
-                            <LineChart data={posicionesRentabilidadSeries}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="fecha_label" />
-                              <YAxis />
-                              <Tooltip
-                                formatter={(value) => [`${Number(value || 0).toFixed(2)}%`, "Rentabilidad"]}
-                              />
-                              <Legend />
-                              <Line
-                                type="monotone"
-                                dataKey="rentabilidad"
-                                name="Rentabilidad"
-                                stroke="#16a34a"
-                                strokeWidth={2.4}
-                                dot={false}
-                              />
-                            </LineChart>
+                            {posicionesRentabilidadChartMode === "bar" ? (
+                              <BarChart data={posicionesRentabilidadMonthlySeries}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="mes_label" />
+                                <YAxis />
+                                <Tooltip
+                                  formatter={(value) => [`${Number(value || 0).toFixed(2)}%`, "Rentabilidad"]}
+                                />
+                                <Legend />
+                                <Bar dataKey="rentabilidad" name="Rentabilidad" fill="#16a34a" />
+                              </BarChart>
+                            ) : (
+                              <LineChart data={posicionesRentabilidadSeries}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="fecha_label" />
+                                <YAxis />
+                                <Tooltip
+                                  formatter={(value) => [`${Number(value || 0).toFixed(2)}%`, "Rentabilidad"]}
+                                />
+                                <Legend />
+                                <Line
+                                  type="monotone"
+                                  dataKey="rentabilidad"
+                                  name="Rentabilidad"
+                                  stroke="#16a34a"
+                                  strokeWidth={2.4}
+                                  dot={false}
+                                />
+                              </LineChart>
+                            )}
                           </ResponsiveContainer>
                         </div>
                       )}
@@ -3461,230 +3642,6 @@ export default function App() {
           {error ? <pre className="error">{error}</pre> : null}
         </>
       ) : null}
-      {currentPage === "activos" ? (
-        <>
-          <h1>Lista de seguimiento</h1>
-          <section>
-            <div className="listHeader">
-              <div style={{ display: "flex", gap: "8px" }}>
-                <input
-                  type="text"
-                  placeholder="Ticker Yahoo (ej. AAPL)"
-                  value={activoYahooTicker}
-                  onChange={(e) => setActivoYahooTicker(e.target.value.toUpperCase())}
-                />
-                <button
-                  type="button"
-                  onClick={handleImportActivoDesdeYahooEnActivos}
-                  disabled={loadingActivoYahoo || !activoYahooTicker.trim()}
-                >
-                  {loadingActivoYahoo ? "Importando..." : "Buscar e importar"}
-                </button>
-                <button type="button" className="buttonSecondary" onClick={loadActivosData}>
-                  Refrescar
-                </button>
-              </div>
-            </div>
-            {loadingData ? <p>Cargando activos...</p> : null}
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Icono</th>
-                  <th>
-                    <button
-                      type="button"
-                      className="tableSortButton"
-                      onClick={() => setActivosSort((prev) => getNextSortState(prev, "nombre", "asc"))}
-                    >
-                      Nombre <span>{getSortIndicator(activosSort, "nombre")}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button
-                      type="button"
-                      className="tableSortButton"
-                      onClick={() => setActivosSort((prev) => getNextSortState(prev, "ticker", "asc"))}
-                    >
-                      Ticker <span>{getSortIndicator(activosSort, "ticker")}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button
-                      type="button"
-                      className="tableSortButton"
-                      onClick={() => setActivosSort((prev) => getNextSortState(prev, "categoria", "asc"))}
-                    >
-                      Categoria <span>{getSortIndicator(activosSort, "categoria")}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button
-                      type="button"
-                      className="tableSortButton"
-                      onClick={() => setActivosSort((prev) => getNextSortState(prev, "precio", "desc"))}
-                    >
-                      Precio <span>{getSortIndicator(activosSort, "precio")}</span>
-                    </button>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedActivos.length === 0 ? (
-                  <tr>
-                    <td colSpan="5">No hay activos registrados</td>
-                  </tr>
-                ) : (
-                  pagedActivos.map((activo) => {
-                      const isSelected = String(selectedActivoId) === String(activo.id);
-                      return (
-                        <Fragment key={activo.id}>
-                          <tr
-                            className={isSelected ? "tableRowSelected" : "tableRowClickable"}
-                            onClick={() =>
-                              setSelectedActivoId((prev) =>
-                                String(prev) === String(activo.id) ? "" : String(activo.id)
-                              )
-                            }
-                          >
-                            <td>
-                              {resolveAssetIconSrc(activo) ? (
-                                <img
-                                  src={resolveAssetIconSrc(activo)}
-                                  alt={activo.ticker || activo.nombre || "Icono activo"}
-                                  style={{ width: "24px", height: "24px", objectFit: "contain" }}
-                                  onError={(event) => {
-                                    event.currentTarget.style.display = "none";
-                                  }}
-                                />
-                              ) : (
-                                "-"
-                              )}
-                            </td>
-                            <td>{activo.nombre || "-"}</td>
-                            <td>{activo.ticker || "-"}</td>
-                            <td>{activo.categoria || "-"}</td>
-                            <td>{formatPriceOrDashZero(activo.precio)}</td>
-                          </tr>
-                          {isSelected ? (
-                            <tr>
-                              <td colSpan="5">
-                                <article className="assetCard">
-                                  <h3>{selectedActivo?.nombre || activo.nombre || "-"}</h3>
-                                  <div className="assetCardGrid">
-                                    <p>
-                                      <strong>Ticker:</strong> {selectedActivo?.ticker || activo.ticker || "-"}
-                                    </p>
-                                    <p>
-                                      <strong>Categoria:</strong> {selectedActivo?.categoria || activo.categoria || "-"}
-                                    </p>
-                                    <p>
-                                      <strong>Icono:</strong> {selectedAssetIconSrc || selectedActivo?.icono || activo.icono || "-"}
-                                    </p>
-                                    <p>
-                                      <strong>Vista icono:</strong>{" "}
-                                      {selectedAssetIconSrc ? (
-                                        <img
-                                          src={selectedAssetIconSrc}
-                                          alt={selectedActivo?.ticker || selectedActivo?.nombre || "Icono activo"}
-                                          style={{
-                                            width: "32px",
-                                            height: "32px",
-                                            objectFit: "contain",
-                                            verticalAlign: "middle"
-                                          }}
-                                          onError={(event) => {
-                                            event.currentTarget.style.display = "none";
-                                          }}
-                                        />
-                                      ) : (
-                                        "-"
-                                      )}
-                                    </p>
-                                    <p>
-                                      <strong>Precio:</strong> {formatPriceOrDashZero(selectedActivo?.precio ?? activo.precio)}
-                                    </p>
-                                    <p>
-                                      <strong>Capitalizacion:</strong> {formatLargeNumberOrDashZero(selectedActivo?.capitalizacion ?? activo.capitalizacion)}
-                                    </p>
-                                    <p>
-                                      <strong>Volumen:</strong> {formatLargeNumberOrDashZero(selectedActivo?.volumen ?? activo.volumen)}
-                                    </p>
-                                    <p>
-                                      <strong>Variacion:</strong> {formatPercentOrDashZero(selectedActivo?.variacion_porcentual ?? activo.variacion_porcentual)}
-                                    </p>
-                                    <p>
-                                      <strong>Moneda:</strong> {selectedActivo?.moneda || activo.moneda || "-"}
-                                    </p>
-                                    <p>
-                                      <strong>Mercado:</strong> {selectedActivo?.mercado || activo.mercado || "-"}
-                                    </p>
-                                  </div>
-                                  {Number((selectedActivo?.categoria_id ?? activo.categoria_id) || 0) === 2 ? (
-                                    <div style={{ marginTop: "12px" }}>
-                                      <h4>DetallesAccion</h4>
-                                      {loadingDetalleActivo ? (
-                                        <p>Cargando detalles de accion...</p>
-                                      ) : detalleAccionActivo ? (
-                                        <div className="assetCardGrid">
-                                          <p>
-                                            <strong>Sector:</strong> {detalleAccionActivo.sector_nombre || "-"}
-                                          </p>
-                                        </div>
-                                      ) : (
-                                        <p>No hay DetallesAccion para este activo.</p>
-                                      )}
-                                    </div>
-                                  ) : null}
-                                  {Number((selectedActivo?.categoria_id ?? activo.categoria_id) || 0) === 3 ? (
-                                    <div style={{ marginTop: "12px" }}>
-                                      <h4>DetallesFondo</h4>
-                                      {loadingDetalleActivo ? (
-                                        <p>Cargando detalles de fondo...</p>
-                                      ) : detalleFondoActivo ? (
-                                        <div className="assetCardGrid">
-                                          <p>
-                                            <strong>Gestora:</strong> {detalleFondoActivo.gestora_nombre || "-"}
-                                          </p>
-                                          <p>
-                                            <strong>Politica:</strong> {detalleFondoActivo.politica || "-"}
-                                          </p>
-                                          <p>
-                                            <strong>Tipo:</strong> {detalleFondoActivo.tipo || "-"}
-                                          </p>
-                                          <p>
-                                            <strong>Geografia:</strong> {detalleFondoActivo.geografia || "-"}
-                                          </p>
-                                        </div>
-                                      ) : (
-                                        <p>No hay DetallesFondo para este activo.</p>
-                                      )}
-                                    </div>
-                                  ) : null}
-                                  <div style={{ marginTop: "12px" }}>
-                                    <button
-                                      type="button"
-                                      className="buttonSecondary"
-                                      onClick={handleDeleteActivoSeleccionado}
-                                    >
-                                      Eliminar activo seleccionado
-                                    </button>
-                                  </div>
-                                </article>
-                              </td>
-                            </tr>
-                          ) : null}
-                        </Fragment>
-                      );
-                    })
-                )}
-              </tbody>
-            </table>
-            {renderPagination(currentActivosPage, totalActivosPages, setActivosPage)}
-          </section>
-          {error ? <pre className="error">{error}</pre> : null}
-        </>
-      ) : null}
-
       {currentPage === "noticias" ? (
         <>
           <div className="listHeader">
@@ -3758,6 +3715,8 @@ export default function App() {
                           dataKey="valor"
                           nameKey="categoria"
                           outerRadius={88}
+                          labelLine={false}
+                          label={renderPiePercentLabel}
                         >
                           {cashFlowCategoriasIngresosMes.map((entry, index) => (
                             <Cell
@@ -3767,10 +3726,7 @@ export default function App() {
                           ))}
                         </Pie>
                         <Tooltip
-                          formatter={(value) => [
-                            `${Number(value || 0).toFixed(2)} ${cashFlowCurrencyTicker}`,
-                            "Importe"
-                          ]}
+                          formatter={buildPiePercentTooltipFormatter(cashFlowCategoriasIngresosMesTotal)}
                         />
                         <Legend />
                       </PieChart>
@@ -3792,6 +3748,8 @@ export default function App() {
                           dataKey="valor"
                           nameKey="categoria"
                           outerRadius={88}
+                          labelLine={false}
+                          label={renderPiePercentLabel}
                         >
                           {cashFlowCategoriasGastosMes.map((entry, index) => (
                             <Cell
@@ -3801,10 +3759,7 @@ export default function App() {
                           ))}
                         </Pie>
                         <Tooltip
-                          formatter={(value) => [
-                            `${Number(value || 0).toFixed(2)} ${cashFlowCurrencyTicker}`,
-                            "Importe"
-                          ]}
+                          formatter={buildPiePercentTooltipFormatter(cashFlowCategoriasGastosMesTotal)}
                         />
                         <Legend />
                       </PieChart>
@@ -4564,17 +4519,6 @@ export default function App() {
                 onClick={() => setCurrentPage("snapshots")}
               >
                 Snapshots
-              </button>
-              <button
-                type="button"
-                className={
-                  currentPage === "activos"
-                    ? "buttonSecondary headerButton headerNavButton headerButtonActive"
-                    : "buttonSecondary headerButton headerNavButton"
-                }
-                onClick={() => setCurrentPage("activos")}
-              >
-                Lista de seguimiento
               </button>
               <button
                 type="button"

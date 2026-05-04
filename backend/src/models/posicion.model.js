@@ -4,6 +4,7 @@ export const getAllPosiciones = () => pool.query(`
   SELECT p.*, 
          po.nombre as portafolio_nombre, po.usuario_id,
          a.nombre as activo_nombre, a.ticker, a.icono as activo_icono, a.categoria_id as activo_categoria_id,
+         s.nombre as sector_nombre,
          u.nombre as usuario_nombre,
          g.nombre as gestora_nombre, g.icono as gestora_icono, df.gestora_id as gestora_id,
          mpo.ticker as portafolio_moneda_ticker,
@@ -17,6 +18,8 @@ export const getAllPosiciones = () => pool.query(`
   FROM Posicion p
   LEFT JOIN Portafolio po ON p.portafolio_id = po.id
   LEFT JOIN Activo a ON p.activo_id = a.id
+  LEFT JOIN DetallesAccion da ON da.activo_id = a.id
+  LEFT JOIN Sector s ON da.sector_id = s.id
   LEFT JOIN DetallesFondo df ON df.activo_id = a.id
   LEFT JOIN Gestora g ON df.gestora_id = g.id
   LEFT JOIN Usuario u ON po.usuario_id = u.id
@@ -27,6 +30,7 @@ export const getPosicionById = (id) => pool.query(`
   SELECT p.*, 
          po.nombre as portafolio_nombre, po.usuario_id,
          a.nombre as activo_nombre, a.ticker, a.icono as activo_icono, a.categoria_id as activo_categoria_id,
+         s.nombre as sector_nombre,
          u.nombre as usuario_nombre,
          g.nombre as gestora_nombre, g.icono as gestora_icono, df.gestora_id as gestora_id,
          mpo.ticker as portafolio_moneda_ticker,
@@ -40,6 +44,8 @@ export const getPosicionById = (id) => pool.query(`
   FROM Posicion p
   LEFT JOIN Portafolio po ON p.portafolio_id = po.id
   LEFT JOIN Activo a ON p.activo_id = a.id
+  LEFT JOIN DetallesAccion da ON da.activo_id = a.id
+  LEFT JOIN Sector s ON da.sector_id = s.id
   LEFT JOIN DetallesFondo df ON df.activo_id = a.id
   LEFT JOIN Gestora g ON df.gestora_id = g.id
   LEFT JOIN Usuario u ON po.usuario_id = u.id
@@ -51,6 +57,7 @@ export const getPosicionesByPortafolio = (portafolio_id) => pool.query(`
   SELECT p.*, 
          po.nombre as portafolio_nombre, po.usuario_id,
          a.nombre as activo_nombre, a.ticker, a.icono as activo_icono, a.categoria_id as activo_categoria_id,
+         s.nombre as sector_nombre,
          u.nombre as usuario_nombre,
          g.nombre as gestora_nombre, g.icono as gestora_icono, df.gestora_id as gestora_id,
          mpo.ticker as portafolio_moneda_ticker,
@@ -64,6 +71,8 @@ export const getPosicionesByPortafolio = (portafolio_id) => pool.query(`
   FROM Posicion p
   LEFT JOIN Portafolio po ON p.portafolio_id = po.id
   LEFT JOIN Activo a ON p.activo_id = a.id
+  LEFT JOIN DetallesAccion da ON da.activo_id = a.id
+  LEFT JOIN Sector s ON da.sector_id = s.id
   LEFT JOIN DetallesFondo df ON df.activo_id = a.id
   LEFT JOIN Gestora g ON df.gestora_id = g.id
   LEFT JOIN Usuario u ON po.usuario_id = u.id
@@ -76,6 +85,7 @@ export const getPosicionesByUsuario = (usuario_id) => pool.query(`
   SELECT p.*, 
          po.nombre as portafolio_nombre, po.usuario_id,
          a.nombre as activo_nombre, a.ticker, a.icono as activo_icono, a.categoria_id as activo_categoria_id,
+         s.nombre as sector_nombre,
          u.nombre as usuario_nombre,
          g.nombre as gestora_nombre, g.icono as gestora_icono, df.gestora_id as gestora_id,
          mpo.ticker as portafolio_moneda_ticker,
@@ -89,6 +99,8 @@ export const getPosicionesByUsuario = (usuario_id) => pool.query(`
   FROM Posicion p
   LEFT JOIN Portafolio po ON p.portafolio_id = po.id
   LEFT JOIN Activo a ON p.activo_id = a.id
+  LEFT JOIN DetallesAccion da ON da.activo_id = a.id
+  LEFT JOIN Sector s ON da.sector_id = s.id
   LEFT JOIN DetallesFondo df ON df.activo_id = a.id
   LEFT JOIN Gestora g ON df.gestora_id = g.id
   LEFT JOIN Usuario u ON po.usuario_id = u.id
@@ -101,6 +113,7 @@ export const getPosicionesByActivo = (activo_id) => pool.query(`
   SELECT p.*, 
          po.nombre as portafolio_nombre, po.usuario_id,
          a.nombre as activo_nombre, a.ticker, a.icono as activo_icono, a.categoria_id as activo_categoria_id,
+         s.nombre as sector_nombre,
          u.nombre as usuario_nombre,
          g.nombre as gestora_nombre, g.icono as gestora_icono, df.gestora_id as gestora_id,
          mpo.ticker as portafolio_moneda_ticker,
@@ -114,6 +127,8 @@ export const getPosicionesByActivo = (activo_id) => pool.query(`
   FROM Posicion p
   LEFT JOIN Portafolio po ON p.portafolio_id = po.id
   LEFT JOIN Activo a ON p.activo_id = a.id
+  LEFT JOIN DetallesAccion da ON da.activo_id = a.id
+  LEFT JOIN Sector s ON da.sector_id = s.id
   LEFT JOIN DetallesFondo df ON df.activo_id = a.id
   LEFT JOIN Gestora g ON df.gestora_id = g.id
   LEFT JOIN Usuario u ON po.usuario_id = u.id
@@ -125,6 +140,7 @@ export const getPosicionesByActivoUsuario = (activo_id, usuario_id) => pool.quer
   SELECT p.*, 
          po.nombre as portafolio_nombre, po.usuario_id,
          a.nombre as activo_nombre, a.ticker, a.icono as activo_icono, a.categoria_id as activo_categoria_id,
+         s.nombre as sector_nombre,
          u.nombre as usuario_nombre,
          g.nombre as gestora_nombre, g.icono as gestora_icono, df.gestora_id as gestora_id,
          mpo.ticker as portafolio_moneda_ticker,
@@ -138,6 +154,8 @@ export const getPosicionesByActivoUsuario = (activo_id, usuario_id) => pool.quer
   FROM Posicion p
   LEFT JOIN Portafolio po ON p.portafolio_id = po.id
   LEFT JOIN Activo a ON p.activo_id = a.id
+  LEFT JOIN DetallesAccion da ON da.activo_id = a.id
+  LEFT JOIN Sector s ON da.sector_id = s.id
   LEFT JOIN DetallesFondo df ON df.activo_id = a.id
   LEFT JOIN Gestora g ON df.gestora_id = g.id
   LEFT JOIN Usuario u ON po.usuario_id = u.id
