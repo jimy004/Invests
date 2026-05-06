@@ -42,9 +42,25 @@ import {
   markAllNotificacionesRead,
   markNotificacionRead,
   logoutUsuario,
-  updateSnapshotConfigByUsuario
+  updateSnapshotConfigByUsuario,
+  getPrecioAlertasByUsuario,
+  crearPrecioAlerta,
+  eliminarPrecioAlerta,
+  getWatchlistByUsuario,
+  crearWatchlistItem,
+  eliminarWatchlistItem,
+  getObjetivosByUsuario,
+  crearObjetivo,
+  actualizarObjetivo,
+  eliminarObjetivo,
+  getDividendosByPortafolio,
+  crearDividendo,
+  eliminarDividendo,
+  getBenchmarkHistorico,
+  actualizarPosicionNota
 } from "./lib/api";
 import {
+  Area,
   Bar,
   BarChart,
   CartesianGrid,
@@ -56,7 +72,9 @@ import {
   Pie,
   PieChart,
   ResponsiveContainer,
+  ReferenceLine,
   Tooltip,
+  Treemap,
   XAxis,
   YAxis
 } from "recharts";
@@ -64,15 +82,14 @@ import {
 export default function App() {
   const LIST_PAGE_SIZE = 10;
   const SNAPSHOT_INTERVAL_OPTIONS = [
-    { value: "60", label: "Cada hora" },
-    { value: "480", label: "Cada 8 horas" },
-    { value: "1440", label: "Cada 24 horas" },
-    { value: "1440", label: "Cada dia" },
-    { value: "10080", label: "Cada semana" },
-    { value: "43200", label: "Cada mes" },
+    { value: "60",     label: "Cada hora" },
+    { value: "480",    label: "Cada 8 horas" },
+    { value: "1440",   label: "Cada 24 horas" },
+    { value: "10080",  label: "Cada semana" },
+    { value: "43200",  label: "Cada mes" },
     { value: "129600", label: "Cada 3 meses" },
     { value: "259200", label: "Cada 6 meses" },
-    { value: "525600", label: "Cada ano" }
+    { value: "525600", label: "Cada año" }
   ];
   const CASHFLOW_CATEGORIAS = [
     "restaurantes",
@@ -202,10 +219,6 @@ export default function App() {
     key: "precio_actual",
     direction: "desc"
   });
-  const [activosSort, setActivosSort] = useState({
-    key: "nombre",
-    direction: "asc"
-  });
   const [loadingInicioCharts, setLoadingInicioCharts] = useState(false);
   const [inicioPortfolioSeries, setInicioPortfolioSeries] = useState([]);
   const [inicioPortfolioKeys, setInicioPortfolioKeys] = useState([]);
@@ -225,6 +238,100 @@ export default function App() {
   const [loadingNoticias, setLoadingNoticias] = useState(false);
   const [noticiasRecientes, setNoticiasRecientes] = useState([]);
   const [noticiasFetchedAt, setNoticiasFetchedAt] = useState("");
+
+  // ── Dark mode ──────────────────────────────────────────────────────────────
+  const [darkMode, setDarkMode] = useState(() => {
+    try { return localStorage.getItem("darkMode") === "1"; } catch { return false; }
+  });
+
+  // ── Precio alertas ─────────────────────────────────────────────────────────
+  const [precioAlertas, setPrecioAlertas] = useState([]);
+  const [loadingAlertas, setLoadingAlertas] = useState(false);
+  const [showAlertaForm, setShowAlertaForm] = useState(false);
+  const [alertaActivoId, setAlertaActivoId] = useState("");
+  const [alertaTipo, setAlertaTipo] = useState("mayor");
+  const [alertaPrecio, setAlertaPrecio] = useState("");
+
+  // ── Watchlist ──────────────────────────────────────────────────────────────
+  const [watchlist, setWatchlist] = useState([]);
+  const [loadingWatchlist, setLoadingWatchlist] = useState(false);
+  const [watchlistActivoTicker, setWatchlistActivoTicker] = useState("");
+  const [watchlistNota, setWatchlistNota] = useState("");
+  const [showWatchlistForm, setShowWatchlistForm] = useState(false);
+
+  // ── Objetivos financieros ──────────────────────────────────────────────────
+  const [objetivos, setObjetivos] = useState([]);
+  const [loadingObjetivos, setLoadingObjetivos] = useState(false);
+  const [showObjetivoForm, setShowObjetivoForm] = useState(false);
+  const [editingObjetivoId, setEditingObjetivoId] = useState(null);
+  const [objNombre, setObjNombre] = useState("");
+  const [objMontoObjetivo, setObjMontoObjetivo] = useState("");
+  const [objFechaObjetivo, setObjFechaObjetivo] = useState("");
+  const [objMontoInicial, setObjMontoInicial] = useState("");
+  const [objNota, setObjNota] = useState("");
+
+  // ── Dividendos ─────────────────────────────────────────────────────────────
+  const [dividendos, setDividendos] = useState([]);
+  const [loadingDividendos, setLoadingDividendos] = useState(false);
+  const [showDividendoForm, setShowDividendoForm] = useState(false);
+  const [divPosicionId, setDivPosicionId] = useState("");
+  const [divFecha, setDivFecha] = useState(() => new Date().toISOString().slice(0, 10));
+  const [divImporte, setDivImporte] = useState("");
+  const [divMonedaId, setDivMonedaId] = useState("");
+  const [divObservacion, setDivObservacion] = useState("");
+
+  // ── Benchmark ──────────────────────────────────────────────────────────────
+  const [benchmarkSymbol, setBenchmarkSymbol] = useState("SP500");
+  const [benchmarkData, setBenchmarkData] = useState([]);
+  const [showBenchmark, setShowBenchmark] = useState(false);
+
+  // ── Simulador de escenarios (por categoría) ───────────────────────────────
+
+  // ── Drag & drop portafolios ────────────────────────────────────────────────
+  const [dragPortafolioId, setDragPortafolioId] = useState(null);
+  const [portafoliosOrder, setPortafoliosOrder] = useState([]);
+
+  // ── Nota por posición ──────────────────────────────────────────────────────
+  const [editingNotaPosicionId, setEditingNotaPosicionId] = useState(null);
+  const [notaPosicionDraft, setNotaPosicionDraft] = useState("");
+
+  // ── Risk metric info tooltip ───────────────────────────────────────────────
+  const [showRiskInfo, setShowRiskInfo] = useState(null);
+
+  // ── Sub-páginas laterales ──────────────────────────────────────────────────
+  const [portafolioSubPage, setPortafolioSubPage] = useState("posiciones");
+  const [inicioSubPage, setInicioSubPage] = useState("resumen");
+  const [cashflowSubPage, setCashflowSubPage] = useState("graficos");
+  const [watchlistSubPage, setWatchlistSubPage] = useState("watchlist");
+
+  // ── Objetivos portafolios seleccionados ────────────────────────────────────
+  const [objetivoPortafolioIds, setObjetivoPortafolioIds] = useState([]);
+  const [editObjetivoPortafolioIds, setEditObjetivoPortafolioIds] = useState([]);
+
+  // ── Escenario por categoría ───────────────────────────────────────────────
+  const [scenarioShocks, setScenarioShocks] = useState({});
+  const [scenarioMode, setScenarioMode] = useState("category");
+  const [monteCarloYears, setMonteCarloYears] = useState(10);
+  const [monteCarloRuns, setMonteCarloRuns] = useState(500);
+  // Feature 7: ruin threshold
+  const [ruinThreshold, setRuinThreshold] = useState(50);
+  // Feature 8: monthly contributions
+  const [monthlyContribution, setMonthlyContribution] = useState(0);
+  // Feature 9: rebalancing comparison
+  const [showMcRebalancing, setShowMcRebalancing] = useState(false);
+  // Feature 11: dividend yield
+  const [dividendYieldPct, setDividendYieldPct] = useState(0);
+  // Override manual del retorno anual en Monte Carlo (null = usar el calculado)
+  const [mcRetornoOverride, setMcRetornoOverride] = useState("");
+  // Feature 12: saved scenarios
+  const [savedScenarios, setSavedScenarios] = useState([]);
+  const [scenarioName, setScenarioName] = useState("");
+  // Feature 4/5/6: view toggles
+  const [showImpactTable, setShowImpactTable] = useState(false);
+  const [showWaterfall, setShowWaterfall] = useState(false);
+  const [showScenarioTreemap, setShowScenarioTreemap] = useState(false);
+  const [showSavedScenarios, setShowSavedScenarios] = useState(false);
+  const [loadingBenchmark, setLoadingBenchmark] = useState(false);
 
   const formatLargeNumber = (value) => {
     const numeric = Number(value);
@@ -569,6 +676,15 @@ export default function App() {
   };
 
   useEffect(() => {
+    try { localStorage.setItem("darkMode", darkMode ? "1" : "0"); } catch { /* no-op */ }
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [darkMode]);
+
+  useEffect(() => {
     const saved = localStorage.getItem("usuario");
     const token = localStorage.getItem("auth_token");
     const refresh = localStorage.getItem("refresh_token");
@@ -860,6 +976,22 @@ export default function App() {
   }, [usuario, currentPage]);
 
   useEffect(() => {
+    if (!usuario || currentPage !== "watchlist") return;
+    loadWatchlistData(usuario);
+    loadAlertasData(usuario);
+  }, [usuario, currentPage]);
+
+  useEffect(() => {
+    if (!usuario || currentPage !== "objetivos") return;
+    loadObjetivosData(usuario);
+  }, [usuario, currentPage]);
+
+  useEffect(() => {
+    if (!usuario || currentPage !== "dividendos" || !selectedPortafolio) return;
+    loadDividendosData(selectedPortafolio.id);
+  }, [usuario, currentPage, selectedPortafolio]);
+
+  useEffect(() => {
     if (!usuario?.moneda_id) return;
     if (!cashFlowMonedaId) {
       setCashFlowMonedaId(String(usuario.moneda_id));
@@ -978,7 +1110,20 @@ export default function App() {
   }, [currentPage]);
 
   useEffect(() => {
-    if (!usuario || currentPage !== "inicio") {
+    setPortafoliosOrder(portafolios.map((p) => p.id));
+  }, [portafolios]);
+
+  useEffect(() => {
+    if (!usuario || !showBenchmark || currentPage !== "inicio") return;
+    setLoadingBenchmark(true);
+    getBenchmarkHistorico(benchmarkSymbol, "1y")
+      .then((data) => setBenchmarkData(Array.isArray(data?.points) ? data.points : []))
+      .catch(() => setBenchmarkData([]))
+      .finally(() => setLoadingBenchmark(false));
+  }, [usuario, showBenchmark, benchmarkSymbol, currentPage]);
+
+  useEffect(() => {
+    if (!usuario || (currentPage !== "inicio" && currentPage !== "portafolio")) {
       setLoadingInicioCharts(false);
       setInicioPortfolioKeys([]);
       setInicioPortfolioSeries([]);
@@ -1088,7 +1233,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [usuario, currentPage, portafolios]);
+  }, [usuario, currentPage, portafolios]); // also loads for portafolio page (needed by Monte Carlo in simulator)
 
   useEffect(() => {
     setHiddenInicioPortfolioKeys((prev) => {
@@ -1134,6 +1279,246 @@ export default function App() {
     }, 3200);
     return () => clearTimeout(timerId);
   }, [message]);
+
+  async function loadWatchlistData(currentUsuario) {
+    setLoadingWatchlist(true);
+    try {
+      const list = await getWatchlistByUsuario(currentUsuario.id);
+      setWatchlist(Array.isArray(list) ? list : []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingWatchlist(false);
+    }
+  }
+
+  async function loadObjetivosData(currentUsuario) {
+    setLoadingObjetivos(true);
+    try {
+      const list = await getObjetivosByUsuario(currentUsuario.id);
+      setObjetivos(Array.isArray(list) ? list : []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingObjetivos(false);
+    }
+  }
+
+  async function loadAlertasData(currentUsuario) {
+    setLoadingAlertas(true);
+    try {
+      const list = await getPrecioAlertasByUsuario(currentUsuario.id);
+      setPrecioAlertas(Array.isArray(list) ? list : []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingAlertas(false);
+    }
+  }
+
+  async function loadDividendosData(portafolioId) {
+    setLoadingDividendos(true);
+    try {
+      const list = await getDividendosByPortafolio(portafolioId);
+      setDividendos(Array.isArray(list) ? list : []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingDividendos(false);
+    }
+  }
+
+  async function handleCrearAlerta(e) {
+    e.preventDefault();
+    if (!usuario || !alertaActivoId || !alertaPrecio) return;
+    setLoading(true);
+    setError("");
+    try {
+      await crearPrecioAlerta({
+        usuario_id: usuario.id,
+        activo_id: Number(alertaActivoId),
+        tipo: alertaTipo,
+        precio_objetivo: Number(alertaPrecio)
+      });
+      setMessage("Alerta creada");
+      setShowAlertaForm(false);
+      setAlertaActivoId("");
+      setAlertaPrecio("");
+      await loadAlertasData(usuario);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleEliminarAlerta(id) {
+    if (!confirm("Eliminar alerta?")) return;
+    try {
+      await eliminarPrecioAlerta(id);
+      setMessage("Alerta eliminada");
+      setPrecioAlertas((prev) => prev.filter((a) => a.id !== id));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleCrearWatchlistItem() {
+    if (!usuario || !watchlistActivoTicker.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      let activoId = activos.find(
+        (a) => a.ticker?.toUpperCase() === watchlistActivoTicker.trim().toUpperCase()
+      )?.id;
+      if (!activoId) {
+        activoId = await importActivoPorTicker(watchlistActivoTicker, { silent: true, setOrderFields: false });
+      }
+      await crearWatchlistItem({ usuario_id: usuario.id, activo_id: activoId, nota: watchlistNota });
+      setMessage("Añadido a watchlist");
+      setShowWatchlistForm(false);
+      setWatchlistActivoTicker("");
+      setWatchlistNota("");
+      await loadWatchlistData(usuario);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleEliminarWatchlistItem(id) {
+    if (!confirm("Eliminar de watchlist?")) return;
+    try {
+      await eliminarWatchlistItem(id);
+      setWatchlist((prev) => prev.filter((w) => w.id !== id));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function clearObjetivoForm() {
+    setEditingObjetivoId(null);
+    setObjNombre("");
+    setObjMontoObjetivo("");
+    setObjFechaObjetivo("");
+    setObjMontoInicial("");
+    setObjNota("");
+    setObjetivoPortafolioIds([]);
+    setEditObjetivoPortafolioIds([]);
+  }
+
+  async function handleObjetivoSubmit(e) {
+    e.preventDefault();
+    if (!usuario) return;
+    setLoading(true);
+    setError("");
+    try {
+      const payload = {
+        usuario_id: usuario.id,
+        nombre: objNombre.trim(),
+        monto_objetivo: Number(objMontoObjetivo),
+        fecha_objetivo: objFechaObjetivo,
+        monto_inicial: Number(objMontoInicial || 0),
+        nota: objNota.trim() || null,
+        portafolio_ids: objetivoPortafolioIds.length ? JSON.stringify(objetivoPortafolioIds) : null
+      };
+      if (editingObjetivoId) {
+        await actualizarObjetivo(editingObjetivoId, payload);
+        setMessage("Objetivo actualizado");
+      } else {
+        await crearObjetivo(payload);
+        setMessage("Objetivo creado");
+      }
+      clearObjetivoForm();
+      setShowObjetivoForm(false);
+      await loadObjetivosData(usuario);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleEliminarObjetivo(id) {
+    if (!confirm("Eliminar objetivo?")) return;
+    try {
+      await eliminarObjetivo(id);
+      setMessage("Objetivo eliminado");
+      setObjetivos((prev) => prev.filter((o) => o.id !== id));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleCrearDividendo(e) {
+    e.preventDefault();
+    if (!selectedPortafolio || !divPosicionId || !divImporte) return;
+    setLoading(true);
+    setError("");
+    try {
+      await crearDividendo({
+        posicion_id: Number(divPosicionId),
+        fecha: divFecha,
+        importe: Number(divImporte),
+        moneda_id: divMonedaId ? Number(divMonedaId) : null,
+        observacion: divObservacion.trim() || null
+      });
+      setMessage("Dividendo registrado");
+      setShowDividendoForm(false);
+      setDivImporte("");
+      setDivObservacion("");
+      await loadDividendosData(selectedPortafolio.id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleEliminarDividendo(id) {
+    if (!confirm("Eliminar dividendo?")) return;
+    try {
+      await eliminarDividendo(id);
+      setMessage("Dividendo eliminado");
+      setDividendos((prev) => prev.filter((d) => d.id !== id));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleGuardarNotaPosicion(posicionId) {
+    try {
+      await actualizarPosicionNota(posicionId, notaPosicionDraft);
+      setPosiciones((prev) =>
+        prev.map((p) => (p.id === posicionId ? { ...p, nota: notaPosicionDraft } : p))
+      );
+      setEditingNotaPosicionId(null);
+      setMessage("Nota guardada");
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function handleDragStartPortafolio(id) {
+    setDragPortafolioId(id);
+  }
+  function handleDragOverPortafolio(e, id) {
+    e.preventDefault();
+    if (dragPortafolioId == null || dragPortafolioId === id) return;
+    setPortafoliosOrder((prev) => {
+      const arr = [...prev];
+      const fromIdx = arr.indexOf(dragPortafolioId);
+      const toIdx = arr.indexOf(id);
+      if (fromIdx < 0 || toIdx < 0) return prev;
+      arr.splice(fromIdx, 1);
+      arr.splice(toIdx, 0, dragPortafolioId);
+      return arr;
+    });
+  }
+  function handleDragEndPortafolio() {
+    setDragPortafolioId(null);
+  }
 
   async function loadCashFlowData(currentUsuario) {
     setLoadingCashFlow(true);
@@ -1805,11 +2190,9 @@ export default function App() {
     .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
   const sortedPosiciones = posiciones.slice().sort((a, b) => {
     const direction = posicionesSort.direction === "asc" ? 1 : -1;
-    if (posicionesSort.key === "variacion_diaria") {
-      return (Number(a.variacion_diaria || 0) - Number(b.variacion_diaria || 0)) * direction;
-    }
-    if (posicionesSort.key === "precio_actual") {
-      return (Number(a.precio_actual || 0) - Number(b.precio_actual || 0)) * direction;
+    const numericKeys = ["variacion_diaria", "precio_actual", "valor_total", "rentabilidad"];
+    if (numericKeys.includes(posicionesSort.key)) {
+      return (Number(a[posicionesSort.key] || 0) - Number(b[posicionesSort.key] || 0)) * direction;
     }
     const valueA = String(a?.[posicionesSort.key] || "");
     const valueB = String(b?.[posicionesSort.key] || "");
@@ -1833,9 +2216,7 @@ export default function App() {
     acc[key].push(snapshot);
     return acc;
   }, {});
-  const visiblePosiciones = showZeroPosiciones
-    ? sortedPosiciones
-    : sortedPosiciones.filter((posicion) => Number(posicion.cantidad || 0) > 0);
+  const visiblePosiciones = sortedPosiciones.filter((posicion) => Number(posicion.cantidad || 0) > 0);
   const activePosiciones = posiciones.filter((posicion) => Number(posicion.cantidad || 0) > 0);
   const portfolioValorActual = activePosiciones.reduce(
     (sum, posicion) => sum + Number(posicion?.valor_total || 0),
@@ -2353,6 +2734,472 @@ export default function App() {
   const posicionesEvolutionMonthlySeries = buildMonthlySeriesLastPoint(posicionesEvolutionSeries);
   const posicionesRentabilidadMonthlySeries = buildMonthlySeriesLastPoint(posicionesRentabilidadSeries);
 
+  // ── Risk metrics (Sharpe, Sortino, Vol, MaxDD, Calmar, CAGR) ─────────────
+  const riskMetrics = (() => {
+    const rawSeries = inicioRentabilidadSeries;
+    if (rawSeries.length < 3) return null;
+
+    const series = rawSeries.slice().sort((a, b) => a.fecha.localeCompare(b.fecha));
+    const values = series.map((p) => Number(p.rentabilidad || 0) + 100); // index base 100
+
+    // Detect actual average interval between snapshots in days
+    const firstDate = new Date(series[0].fecha);
+    const lastDate  = new Date(series[series.length - 1].fecha);
+    const totalDays = Math.max(1, (lastDate - firstDate) / 86400000);
+    const avgDaysBetween = totalDays / Math.max(1, series.length - 1);
+    // Periods per year based on real interval (e.g. ~365 if daily, ~52 if weekly, ~12 if monthly)
+    const periodsPerYear = 365 / avgDaysBetween;
+
+    const returns = [];
+    for (let i = 1; i < values.length; i++) {
+      returns.push(values[i - 1] !== 0 ? (values[i] - values[i - 1]) / values[i - 1] : 0);
+    }
+
+    const n = returns.length;
+    const mean = returns.reduce((s, r) => s + r, 0) / n;
+    const variance = returns.reduce((s, r) => s + (r - mean) ** 2, 0) / n;
+    const stddev = Math.sqrt(variance);
+
+    const downsideReturns = returns.filter((r) => r < 0);
+    const downsideVariance = downsideReturns.length
+      ? downsideReturns.reduce((s, r) => s + r * r, 0) / downsideReturns.length
+      : 0;
+    const downsideDev = Math.sqrt(downsideVariance);
+
+    // Annualize using actual frequency, not assuming daily
+    const annualFactor = Math.sqrt(periodsPerYear);
+    const annualVol = stddev * annualFactor * 100;
+    const annualReturn = mean * periodsPerYear * 100;
+
+    const sharpe = annualVol > 0 ? annualReturn / annualVol : 0;
+    const sortino = downsideDev > 0 ? annualReturn / (downsideDev * annualFactor * 100) : 0;
+
+    let peak = values[0];
+    let maxDD = 0;
+    for (const v of values) {
+      if (v > peak) peak = v;
+      const dd = peak > 0 ? ((v - peak) / peak) * 100 : 0;
+      if (dd < maxDD) maxDD = dd;
+    }
+
+    const calmar = maxDD !== 0 ? annualReturn / Math.abs(maxDD) : 0;
+
+    // CAGR using actual elapsed time
+    const firstVal = values[0];
+    const lastVal  = values[values.length - 1];
+    const years = totalDays / 365;
+    const cagr = firstVal > 0 && years > 0
+      ? (Math.pow(lastVal / firstVal, 1 / years) - 1) * 100
+      : 0;
+
+    const positive = returns.filter((r) => r > 0).length;
+    const winRate = n > 0 ? (positive / n) * 100 : 0;
+
+    // VaR 95% per period, scaled to daily equivalent for display
+    const var95Daily = -(mean - 1.645 * stddev) * 100 / Math.sqrt(avgDaysBetween);
+
+    // Pain Index (average of all drawdown magnitudes)
+    let runningPeak = values[0];
+    let totalDD = 0;
+    for (const v of values) {
+      if (v > runningPeak) runningPeak = v;
+      totalDD += runningPeak > 0 ? Math.abs((v - runningPeak) / runningPeak) * 100 : 0;
+    }
+    const painIndex = values.length > 0 ? totalDD / values.length : 0;
+
+    // Recovery factor = CAGR / |maxDD|
+    const recoveryFactor = maxDD !== 0 ? cagr / Math.abs(maxDD) : 0;
+
+    return {
+      sharpe:      sharpe.toFixed(2),
+      sortino:     sortino.toFixed(2),
+      volatilidad: annualVol.toFixed(2),
+      maxDrawdown: maxDD.toFixed(2),
+      calmar:      calmar.toFixed(2),
+      cagr:        cagr.toFixed(2),
+      winRate:     winRate.toFixed(1),
+      annualReturn: annualReturn.toFixed(2),
+      var95:       var95Daily.toFixed(2),
+      painIndex:   painIndex.toFixed(2),
+      recoveryFactor: recoveryFactor.toFixed(2)
+    };
+  })();
+
+  // ── Correlation matrix from posicion snapshots ────────────────────────────
+  const correlationMatrix = (() => {
+    const keys = posicionesEvolutionKeys.slice(0, 6);
+    if (keys.length < 2 || posicionesEvolutionSeries.length < 4) return null;
+    const series = posicionesEvolutionSeries;
+    const returnsMap = {};
+    for (const k of keys) {
+      returnsMap[k.key] = [];
+      for (let i = 1; i < series.length; i++) {
+        const prev = Number(series[i - 1][k.key] || 0);
+        const curr = Number(series[i][k.key] || 0);
+        returnsMap[k.key].push(prev !== 0 ? (curr - prev) / prev : 0);
+      }
+    }
+    function pearson(a, b) {
+      const n = Math.min(a.length, b.length);
+      if (n < 2) return 0;
+      const ma = a.slice(0, n).reduce((s, v) => s + v, 0) / n;
+      const mb = b.slice(0, n).reduce((s, v) => s + v, 0) / n;
+      let num = 0, da2 = 0, db2 = 0;
+      for (let i = 0; i < n; i++) {
+        const da = a[i] - ma, db = b[i] - mb;
+        num += da * db; da2 += da * da; db2 += db * db;
+      }
+      return da2 === 0 || db2 === 0 ? 0 : num / Math.sqrt(da2 * db2);
+    }
+    const matrix = keys.map((ki) =>
+      keys.map((kj) => pearson(returnsMap[ki.key], returnsMap[kj.key]))
+    );
+    return { keys, matrix };
+  })();
+
+  // ── Heatmap data from active posiciones ──────────────────────────────────
+  const heatmapData = (() => {
+    const active = posiciones.filter((p) => Number(p.cantidad || 0) > 0 && Number(p.valor_total || 0) > 0);
+    if (!active.length) return [];
+    const total = active.reduce((s, p) => s + Number(p.valor_total || 0), 0);
+    return active.map((p) => ({
+      name: p.ticker || p.activo_nombre || "?",
+      fullName: p.activo_nombre || p.ticker || "?",
+      size: Number(p.valor_total || 0),
+      peso: total > 0 ? ((Number(p.valor_total || 0) / total) * 100).toFixed(1) : "0",
+      variacion: p.variacion_diaria != null ? Number(p.variacion_diaria)
+                 : p.variacion_porcentual != null ? Number(p.variacion_porcentual)
+                 : Number(p.rentabilidad ?? 0),
+      variacionEsDiaria: p.variacion_diaria != null || p.variacion_porcentual != null
+    }));
+  })();
+
+  // ── Scenario simulator ────────────────────────────────────────────────────
+  const scenarioCategories = (() => {
+    const cats = {};
+    for (const p of posiciones) {
+      if (Number(p.cantidad || 0) <= 0) continue;
+      const cat = String(p.categoria_nombre || p.activo_categoria_nombre || p.categoria || "Otros").trim() || "Otros";
+      if (!cats[cat]) cats[cat] = { valor: 0, positions: [] };
+      cats[cat].valor += Number(p.valor_total || 0);
+      cats[cat].positions.push(p);
+    }
+    return cats;
+  })();
+  const scenarioCurrentTotal = posiciones.filter((p) => Number(p.cantidad || 0) > 0).reduce((s, p) => s + Number(p.valor_total || 0), 0);
+  // ── Beta multipliers per category (feature 2) ────────────────────────────
+  const BETA_MULTIPLIERS = [
+    { keys: ["tecnolog","tech","software","semicon"], beta: 1.5 },
+    { keys: ["crypto","criptomoneda","bitcoin","blockchain"], beta: 2.5 },
+    { keys: ["renta fija","bono","bond","deuda"], beta: 0.2 },
+    { keys: ["real estate","inmobiliario","reits"], beta: 0.6 },
+    { keys: ["liquidez","cash","monetario"], beta: 0.0 },
+    { keys: ["materia prima","commodity","oro","gold"], beta: 0.4 },
+    { keys: ["energía","energy","petroleo"], beta: 0.8 },
+    { keys: ["consumo básico","utilities","farmaceut","healthcare"], beta: 0.6 },
+  ];
+  function getCategoryBeta(cat) {
+    const k = (cat || "").toLowerCase();
+    for (const entry of BETA_MULTIPLIERS) {
+      if (entry.keys.some((key) => k.includes(key))) return entry.beta;
+    }
+    return 1.0;
+  }
+
+  const effectiveShocks = scenarioShocks;
+
+  // ── Scenario result using effectiveShocks ────────────────────────────────
+  const scenarioResultFinal = (() => {
+    let total = 0;
+    for (const p of posiciones) {
+      if (Number(p.cantidad || 0) <= 0) continue;
+      const shock = Number(effectiveShocks[String(p.id)] || 0) / 100;
+      total += Number(p.valor_total || 0) * (1 + shock);
+    }
+    return total;
+  })();
+
+  // ── Preset historical scenarios (feature 1 + 15) ─────────────────────────
+  const PRESET_SCENARIOS = [
+    { label: "Crisis 2008", icon: "📉", description: "Crisis financiera global — S&P 500 -57%", shocks: { default: -50, "renta fija": -5, "bono": -5, "liquidez": 0, "cash": 0 } },
+    { label: "COVID-19", icon: "🦠", description: "Pandemia 2020 — Caída rápida (-35%) y recuperación", shocks: { default: -35, "tecnolog": 25, "tech": 25, "farmaceut": 20, "salud": 20, "liquidez": 0 } },
+    { label: "Punto-com", icon: "💻", description: "Burbuja tecnológica 2000 — Nasdaq -78%", shocks: { default: -25, "tecnolog": -78, "tech": -78, "software": -78, "semicon": -60 } },
+    { label: "Corrección 2022", icon: "📊", description: "Subida de tipos — Tecnología y bonos caen", shocks: { default: -20, "tecnolog": -35, "tech": -35, "renta fija": -15, "bono": -15, "energía": 25, "energy": 25 } },
+    { label: "Inflación extrema", icon: "🔥", description: "Escenario de hiperinflación — Activos reales ganan", shocks: { default: -30, "renta fija": -40, "bono": -40, "liquidez": -20, "oro": 50, "materia": 40, "real estate": 20, "inmobiliario": 20 } },
+    { label: "Recesión moderada", icon: "📉", description: "Recesión suave — Caída controlada en renta variable", shocks: { default: -15, "renta fija": 10, "bono": 10, "liquidez": 0, "oro": 10 } },
+  ];
+  function applyRandomShock() {
+    // Genera un escenario de mercado aleatorio con distribución realista
+    const rand = Math.random();
+    let marketShock;
+    if (rand < 0.20) {
+      // Bear market severo (20% probabilidad): -50 a -20
+      marketShock = -(20 + Math.random() * 30);
+    } else if (rand < 0.40) {
+      // Corrección moderada (20%): -20 a -8
+      marketShock = -(8 + Math.random() * 12);
+    } else if (rand < 0.65) {
+      // Mercado lateral (25%): -8 a +8
+      marketShock = -8 + Math.random() * 16;
+    } else if (rand < 0.85) {
+      // Bull market moderado (20%): +8 a +20
+      marketShock = 8 + Math.random() * 12;
+    } else {
+      // Bull market fuerte (15%): +20 a +40
+      marketShock = 20 + Math.random() * 20;
+    }
+    marketShock = Math.round(marketShock * 10) / 10;
+    // Añadir ruido idiosincrático pequeño por posición
+    const newShocks = {};
+    for (const p of posiciones) {
+      if (Number(p.cantidad || 0) <= 0) continue;
+      const cat = String(p.categoria_nombre || p.activo_categoria_nombre || p.categoria || "Otros");
+      const beta = getCategoryBeta(cat);
+      const noise = (Math.random() - 0.5) * 6; // ±3% de ruido idiosincrático
+      const shock = Math.round((marketShock * beta + noise) * 10) / 10;
+      newShocks[String(p.id)] = Math.max(-80, Math.min(80, shock));
+    }
+    setScenarioShocks(newShocks);
+    setScenarioMode("position");
+  }
+
+  function applyPreset(preset) {
+    const newShocks = {};
+    const getShock = (key) => {
+      const k = key.toLowerCase();
+      for (const [shockKey, val] of Object.entries(preset.shocks)) {
+        if (shockKey === "default") continue;
+        if (k.includes(shockKey)) return val;
+      }
+      return preset.shocks.default ?? 0;
+    };
+    for (const p of posiciones) {
+      if (Number(p.cantidad || 0) <= 0) continue;
+      const cat = String(p.categoria_nombre || p.activo_categoria_nombre || p.categoria || "Otros");
+      newShocks[String(p.id)] = getShock(cat);
+    }
+    setScenarioShocks(newShocks);
+    setScenarioMode("position");
+  }
+
+  // ── Bar chart / waterfall / treemap / table data using effectiveShocks ────
+  const scenarioBarData = posiciones.filter((p) => Number(p.cantidad || 0) > 0).map((p) => {
+    const shock = Number(effectiveShocks[String(p.id)] || 0) / 100;
+    const val = Number(p.valor_total || 0);
+    return { name: (p.ticker || p.activo_nombre || "?").slice(0, 10), actual: Number(val.toFixed(2)), escenario: Number((val * (1 + shock)).toFixed(2)) };
+  });
+
+  const waterfallData = posiciones.filter((p) => Number(p.cantidad || 0) > 0).map((p) => {
+    const shock = Number(effectiveShocks[String(p.id)] || 0) / 100;
+    const val = Number(p.valor_total || 0);
+    return { name: (p.ticker || p.activo_nombre || "?").slice(0, 10), delta: Number((val * shock).toFixed(2)) };
+  }).sort((a, b) => a.delta - b.delta);
+
+  const scenarioTreemapData = posiciones.filter((p) => Number(p.cantidad || 0) > 0).map((p) => ({
+    name: (p.ticker || p.activo_nombre || "?").slice(0, 12),
+    size: Number(p.valor_total || 0),
+    shock: Number(effectiveShocks[String(p.id)] || 0),
+  })).filter((i) => i.size > 0);
+
+  const impactTableData = posiciones.filter((p) => Number(p.cantidad || 0) > 0).map((p) => {
+    const shock = Number(effectiveShocks[String(p.id)] || 0) / 100;
+    const val = Number(p.valor_total || 0);
+    const newVal = val * (1 + shock);
+    return { name: p.activo_nombre || p.ticker || "?", ticker: p.ticker || "-", actual: val, escenario: newVal, delta: newVal - val, shockPct: shock * 100 };
+  }).sort((a, b) => a.delta - b.delta);
+
+  // ── Dynamic VaR (feature 13) ──────────────────────────────────────────────
+  const dynamicVar95 = scenarioResultFinal > 0 && riskMetrics
+    ? scenarioResultFinal * (Number(riskMetrics.volatilidad) / 100) / Math.sqrt(252) * 1.645
+    : null;
+
+  // ── Inconsistency warnings (feature 14) ──────────────────────────────────
+  const scenarioWarnings = (() => {
+    const warnings = [];
+    const shockValues = Object.values(effectiveShocks).map(Number);
+    if (shockValues.length === 0) return warnings;
+    // Check bond/equity combination
+    const bondKeys = ["renta fija", "bono", "bond"];
+    const equityKeys = ["renta variable", "accion", "etf"];
+    let bondShock = null, equityShock = null;
+    for (const [cat, shock] of Object.entries(effectiveShocks)) {
+      const k = cat.toLowerCase();
+      if (bondKeys.some((b) => k.includes(b))) bondShock = Number(shock);
+      if (equityKeys.some((e) => k.includes(e))) equityShock = Number(shock);
+    }
+    if (bondShock !== null && equityShock !== null && bondShock > 15 && equityShock > 15) {
+      warnings.push("Bonos y renta variable subiendo mucho simultáneamente es poco habitual. En mercados alcistas de equity, los bonos suelen mantenerse o bajar.");
+    }
+    if (bondShock !== null && bondShock > 20) {
+      warnings.push("Una subida de bonos >20% implicaría una bajada drástica de tipos de interés, un escenario extremo.");
+    }
+    const cryptoShock = Object.entries(effectiveShocks).find(([k]) => k.toLowerCase().includes("crypto") || k.toLowerCase().includes("criptomoneda"));
+    if (cryptoShock && Math.abs(Number(cryptoShock[1])) > 70) {
+      warnings.push(`Shock en crypto de ${cryptoShock[1]}%: histórico pero posible (BTC cayó -84% en 2018 y +1000% en otros períodos).`);
+    }
+    return warnings;
+  })();
+
+  // ── Objectives impact (feature 10) ───────────────────────────────────────
+  const objetivosImpact = objetivos.map((obj) => {
+    const valorPortafolioActual = scenarioCurrentTotal;
+    const valorEscenario = scenarioResultFinal;
+    const target = Number(obj.monto_objetivo || 0);
+    const progActual = target > 0 ? (valorPortafolioActual / target) * 100 : 0;
+    const progEscenario = target > 0 ? (valorEscenario / target) * 100 : 0;
+    return { ...obj, progActual, progEscenario, delta: progEscenario - progActual };
+  });
+
+  // ── Monte Carlo extendido con rutas anuales (features 3,7,8,9,11) ─────────
+  const monteCarloData = (() => {
+    if (!riskMetrics || scenarioCurrentTotal <= 0) return {};
+    const baseReturn = mcRetornoOverride !== "" ? Number(mcRetornoOverride) : Number(riskMetrics.annualReturn);
+    const mu = baseReturn / 100 + dividendYieldPct / 100;
+    const sigma = Number(riskMetrics.volatilidad) / 100;
+    const sigmaRebal = sigma * 0.88;
+    const years = monteCarloYears;
+    const runs = Math.min(monteCarloRuns, 1000);
+    const dt = 1 / 12;
+    const contrib = Number(monthlyContribution);
+    const gauss = () => Math.sqrt(-2 * Math.log(Math.random())) * Math.cos(2 * Math.PI * Math.random());
+
+    function simulate(s0, sigmaToUse) {
+      const yearlyVals = Array.from({ length: years + 1 }, () => []);
+      yearlyVals[0] = Array(runs).fill(s0);
+      const finals = [];
+      for (let r = 0; r < runs; r++) {
+        let v = s0;
+        for (let y = 1; y <= years; y++) {
+          for (let m = 0; m < 12; m++) {
+            v = v * Math.exp((mu - 0.5 * sigmaToUse * sigmaToUse) * dt + sigmaToUse * Math.sqrt(dt) * gauss()) + contrib;
+            if (v < 0) v = 0;
+          }
+          yearlyVals[y].push(v);
+        }
+        finals.push(v);
+      }
+      finals.sort((a, b) => a - b);
+      const pct = (frac) => finals[Math.floor(runs * frac)] ?? finals[finals.length - 1];
+      const data = yearlyVals.map((yv, yi) => {
+        const sorted = [...yv].sort((a, b) => a - b);
+        const p = (f) => sorted[Math.floor(runs * f)] ?? sorted[sorted.length - 1];
+        return { year: `Año ${yi}`, p10: Number(p(0.10).toFixed(0)), p25: Number(p(0.25).toFixed(0)), p50: Number(p(0.50).toFixed(0)), p75: Number(p(0.75).toFixed(0)), p90: Number(p(0.90).toFixed(0)) };
+      });
+      const ruinCount = finals.filter((v) => v < s0 * (ruinThreshold / 100)).length;
+      const ruinProb = (ruinCount / runs) * 100;
+      return { data, finals, p10: pct(0.10), p25: pct(0.25), p50: pct(0.50), p75: pct(0.75), p90: pct(0.90), ruinProb };
+    }
+
+    const base = simulate(scenarioCurrentTotal, sigma);
+    const rebal = showMcRebalancing ? simulate(scenarioCurrentTotal, sigmaRebal) : null;
+    return { ...base, rebal };
+  })();
+
+  // ── Rebalanceo alerts ─────────────────────────────────────────────────────
+  const REBALANCE_THRESHOLD = 5;
+  const resumenesConAlerta = resumenesConMetricas.map((r) => ({
+    ...r,
+    needsRebalance: Math.abs(r.peso - Number(r.pesoObjetivo || 0)) > REBALANCE_THRESHOLD
+  }));
+
+  // ── Portafolios ordered by drag&drop ────────────────────────────────────
+  const orderedPortafolios = portafoliosOrder.length
+    ? portafoliosOrder
+        .map((id) => portafolios.find((p) => p.id === id))
+        .filter(Boolean)
+    : portafolios;
+
+  // ── Benchmark merged series for chart ────────────────────────────────────
+  const inicioRentabilidadWithBenchmark = (() => {
+    const base = inicioRentabilidadMonthlySeries;
+    if (!showBenchmark || !benchmarkData.length) return base;
+    // Yahoo sometimes returns last-day-of-month dates; normalize to month key
+    const benchMap = new Map();
+    for (const b of benchmarkData) {
+      const raw = String(b.fecha || "");
+      const mk = raw.slice(0, 7);
+      if (!benchMap.has(mk)) benchMap.set(mk, Number(b.rentabilidad || 0));
+      // Also store with next-month key for end-of-month Yahoo dates
+      const d = new Date(raw + "T00:00:00Z");
+      if (!Number.isNaN(d.getTime())) {
+        const day = d.getUTCDate();
+        const daysInMonth = new Date(d.getUTCFullYear(), d.getUTCMonth() + 1, 0).getUTCDate();
+        if (day >= daysInMonth - 2) {
+          const nextMonth = new Date(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
+          const nextKey = nextMonth.toISOString().slice(0, 7);
+          if (!benchMap.has(nextKey)) benchMap.set(nextKey, Number(b.rentabilidad || 0));
+        }
+      }
+    }
+    return base.map((point) => {
+      const monthKey = String(point.mes || point.fecha || "").slice(0, 7);
+      const bVal = benchMap.get(monthKey);
+      return { ...point, benchmark: bVal ?? null };
+    });
+  })();
+
+  // ── Objetivos progreso ────────────────────────────────────────────────────
+  const totalPortafolioValor = resumenes.reduce((s, r) => s + Number(r.totalCategoriaMoneda || 0), 0);
+
+  // ── Dividendos totales ────────────────────────────────────────────────────
+  const dividendosTotalAnio = dividendos
+    .filter((d) => String(d.fecha || "").startsWith(String(new Date().getFullYear())))
+    .reduce((s, d) => s + Number(d.importe || 0), 0);
+  const dividendosTotalHistorico = dividendos.reduce((s, d) => s + Number(d.importe || 0), 0);
+
+  const SIDEBAR_ITEMS = {
+    inicio: [
+      { key: "resumen", label: "Resumen" },
+      { key: "evolucion", label: "Gráficos" },
+      { key: "metricas", label: "Métricas de riesgo" },
+    ],
+    portafolio: [
+      { key: "posiciones", label: "Posiciones" },
+      { key: "heatmap", label: "Mapa de calor" },
+      { key: "correlacion", label: "Correlación" },
+      { key: "dividendos", label: "Dividendos" },
+      { key: "simulador", label: "Simulador" },
+    ],
+    cashflow: [
+      { key: "calendario", label: "Calendario" },
+      { key: "graficos", label: "Gráficos" },
+      { key: "movimientos", label: "Movimientos" },
+    ],
+    watchlist: [
+      { key: "watchlist", label: "Watchlist" },
+      { key: "alertas", label: "Alertas de precio" },
+    ],
+    objetivos: [
+      { key: "objetivos", label: "Mis objetivos" },
+    ],
+    snapshots: [
+      { key: "snapshots", label: "Snapshots" },
+    ],
+    noticias: [
+      { key: "noticias", label: "Noticias" },
+    ],
+  };
+
+  function renderSidebar(pageKey, activeSub, setActiveSub) {
+    const items = SIDEBAR_ITEMS[pageKey] || [];
+    if (items.length <= 1) return null;
+    return (
+      <nav className="pageSidebar" aria-label="Navegación de sección">
+        <div className="pageSidebarTitle">{pageKey.charAt(0).toUpperCase() + pageKey.slice(1)}</div>
+        {items.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className={`pageSidebarItem${activeSub === item.key ? " active" : ""}`}
+            onClick={() => setActiveSub(item.key)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
+    );
+  }
+
   const mainContent = usuario ? (
     <>
       {currentPage === "inicio" ? (
@@ -2362,7 +3209,7 @@ export default function App() {
             Sesion activa como <strong>{usuario.nombre}</strong>
           </p>
 
-          <section>
+          <section id="sec-inicio-resumen">
             <div className="listHeader">
               <h2>Tabla resumen</h2>
             </div>
@@ -2385,7 +3232,7 @@ export default function App() {
                   </tr>
                 ) : (
                   <>
-                    {resumenesConMetricas.map((resumen) => (
+                    {resumenesConAlerta.map((resumen) => (
                       <tr key={resumen.id}>
                         <td>{resumen.categoria_nombre || "-"}</td>
                         <td>{Number(resumen.totalCategoriaMoneda || 0).toFixed(2)}</td>
@@ -2393,7 +3240,14 @@ export default function App() {
                         <td title={resumen.tooltipRentabilidad}>
                           {Number(resumen.rentabilidad || 0).toFixed(2)}%
                         </td>
-                        <td title={resumen.tooltipPeso}>{Number(resumen.peso || 0).toFixed(2)}%</td>
+                        <td title={resumen.tooltipPeso}>
+                          {Number(resumen.peso || 0).toFixed(2)}%{" "}
+                          {resumen.needsRebalance ? (
+                            <span className="rebalanceBadge" title={resumen.tooltipPeso}>
+                              ⚠ Rebalancear
+                            </span>
+                          ) : null}
+                        </td>
                         <td>
                           <input
                             type="number"
@@ -2432,10 +3286,7 @@ export default function App() {
             </table>
           </section>
 
-          <section>
-            <div className="listHeader">
-              <h2>Graficos</h2>
-            </div>
+          <section id="sec-inicio-evolucion" className="sectionCharts">
             <div className="dashboardChartsGrid">
               <article className="chartCard chartCardWide">
                 <h3>Peso de la tabla resumen</h3>
@@ -2630,6 +3481,40 @@ export default function App() {
                   >
                     Columnas
                   </button>
+                  <button
+                    type="button"
+                    className={`buttonSecondary chartToggleButton${showBenchmark ? " chartToggleButtonActive" : ""}`}
+                    onClick={() => setShowBenchmark((prev) => !prev)}
+                    title="Comparar con benchmark"
+                  >
+                    {loadingBenchmark ? "Cargando..." : "Benchmark"}
+                  </button>
+                  {showBenchmark ? (
+                    <select value={benchmarkSymbol} onChange={(e) => setBenchmarkSymbol(e.target.value)}
+                      style={{ fontSize: "0.78rem", padding: "2px 6px" }}>
+                      {["SP500", "IBEX35", "EUROSTOXX50", "NASDAQ", "DAX"].map((b) => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </select>
+                  ) : null}
+                  {showBenchmark && !loadingBenchmark && benchmarkData.length === 0 ? (
+                    <span style={{ fontSize: "0.72rem", color: "var(--red-600)" }}>Sin datos de benchmark</span>
+                  ) : null}
+                  {showBenchmark ? (
+                    <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
+                      Datos vía{" "}
+                      <a href="https://finance.yahoo.com" target="_blank" rel="noreferrer"
+                        style={{ color: "var(--blue-600)", textDecoration: "underline" }}>
+                        Yahoo Finance
+                      </a>
+                      {" · "}
+                      {benchmarkSymbol === "SP500" && "S&P 500 (^GSPC) — 500 mayores empresas de EE.UU."}
+                      {benchmarkSymbol === "IBEX35" && "IBEX 35 (^IBEX) — 35 mayores empresas del mercado español."}
+                      {benchmarkSymbol === "EUROSTOXX50" && "Euro Stoxx 50 (^STOXX50E) — 50 líderes de la eurozona."}
+                      {benchmarkSymbol === "NASDAQ" && "Nasdaq Composite (^IXIC) — Todas las empresas del Nasdaq (tech)."}
+                      {benchmarkSymbol === "DAX" && "DAX 40 (^GDAXI) — 40 mayores empresas alemanas."}
+                    </span>
+                  ) : null}
                 </div>
                 {loadingInicioCharts ? (
                   <p className="chartNoData">Cargando rentabilidad...</p>
@@ -2639,33 +3524,34 @@ export default function App() {
                   <div className="chartWrap">
                     <ResponsiveContainer width="100%" height={260}>
                       {inicioRentabilidadChartMode === "bar" ? (
-                        <BarChart data={inicioRentabilidadMonthlySeries}>
+                        <ComposedChart data={inicioRentabilidadWithBenchmark}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="mes_label" />
                           <YAxis />
-                          <Tooltip
-                            formatter={(value) => [`${Number(value || 0).toFixed(2)}%`, "Rentabilidad"]}
-                          />
+                          <ReferenceLine y={0} stroke="var(--border-strong)" strokeDasharray="4 2" />
+                          <Tooltip formatter={(value) => [`${Number(value || 0).toFixed(2)}%`]} />
                           <Legend />
-                          <Bar dataKey="rentabilidad" name="Rentabilidad total" fill="#16a34a" />
-                        </BarChart>
+                          <Bar dataKey="rentabilidad" name="Mi portafolio" fill="#16a34a" />
+                          {showBenchmark ? (
+                            <Line type="monotone" dataKey="benchmark" name={benchmarkSymbol}
+                              stroke="#f97316" strokeWidth={2} dot={false} connectNulls />
+                          ) : null}
+                        </ComposedChart>
                       ) : (
-                        <LineChart data={inicioRentabilidadSeries}>
+                        <LineChart data={inicioRentabilidadWithBenchmark}>
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="fecha_label" />
+                          <XAxis dataKey="mes_label" />
                           <YAxis />
-                          <Tooltip
-                            formatter={(value) => [`${Number(value || 0).toFixed(2)}%`, "Rentabilidad"]}
-                          />
+                          <ReferenceLine y={0} stroke="var(--border-strong)" strokeDasharray="4 2" />
+                          <Tooltip formatter={(value) => [`${Number(value || 0).toFixed(2)}%`]} />
                           <Legend />
-                          <Line
-                            type="monotone"
-                            dataKey="rentabilidad"
-                            name="Rentabilidad total"
-                            stroke="#16a34a"
-                            strokeWidth={2.4}
-                            dot={false}
-                          />
+                          <Line type="monotone" dataKey="rentabilidad" name="Mi portafolio"
+                            stroke="#16a34a" strokeWidth={2.4} dot={false} />
+                          {showBenchmark ? (
+                            <Line type="monotone" dataKey="benchmark" name={benchmarkSymbol}
+                              stroke="#f97316" strokeWidth={1.8} strokeDasharray="5 3"
+                              dot={false} connectNulls />
+                          ) : null}
                         </LineChart>
                       )}
                     </ResponsiveContainer>
@@ -2675,175 +3561,140 @@ export default function App() {
             </div>
           </section>
 
+          {riskMetrics ? (
+            <section id="sec-inicio-metricas">
+              <h2>Metricas de riesgo del portafolio</h2>
+              {(() => {
+                const RISK_INFO = {
+                  sharpe: { label: "Sharpe Ratio", color: (v) => Number(v) >= 1 ? "var(--green-600)" : Number(v) >= 0 ? "var(--amber-600)" : "var(--red-600)", suffix: "", explain: "Mide el retorno extra por unidad de riesgo total. Sharpe > 1 es bueno, > 2 muy bueno, < 0 indica perdida ajustada al riesgo. Fórmula: (Retorno anual - 0%) / Volatilidad anual." },
+                  sortino: { label: "Sortino Ratio", color: (v) => Number(v) >= 1 ? "var(--green-600)" : Number(v) >= 0 ? "var(--amber-600)" : "var(--red-600)", suffix: "", explain: "Como Sharpe pero solo penaliza la volatilidad negativa (bajadas). Es más justo para activos asimétricos. Sortino > 2 es excelente." },
+                  volatilidad: { label: "Volatilidad anual", color: () => "var(--text-primary)", suffix: "%", explain: "Desviación estándar de los retornos diarios escalada a un año. Una volatilidad alta implica más riesgo (y potencial beneficio). Mercados maduros suelen tener 15-20%." },
+                  maxDrawdown: { label: "Max Drawdown", color: () => "var(--red-600)", suffix: "%", explain: "Mayor caída desde un máximo histórico. Indica el peor escenario que has vivido. Un drawdown de -20% significa que en el peor momento perdiste un 20% desde el pico." },
+                  calmar: { label: "Calmar Ratio", color: (v) => Number(v) >= 0.5 ? "var(--green-600)" : "var(--text-primary)", suffix: "", explain: "Retorno anual / Max Drawdown absoluto. Mide si el retorno compensa el riesgo de caída máxima. Calmar > 1 es positivo." },
+                  cagr: { label: "CAGR", color: (v) => Number(v) >= 0 ? "var(--green-600)" : "var(--red-600)", suffix: "%", explain: "Tasa de Crecimiento Anual Compuesta. Representa el retorno anualizado si el portafolio hubiera crecido a tasa constante. Es la métrica más representativa del rendimiento a largo plazo." },
+                  winRate: { label: "Win Rate", color: (v) => Number(v) >= 55 ? "var(--green-600)" : "var(--text-primary)", suffix: "%", explain: "Porcentaje de días con retorno positivo. > 55% es generalmente bueno, aunque es menos importante que la magnitud de las ganancias vs pérdidas." },
+                  annualReturn: { label: "Retorno anual est.", color: (v) => Number(v) >= 0 ? "var(--green-600)" : "var(--red-600)", suffix: "%", explain: "Retorno medio diario escalado a 252 días hábiles. Es una estimación del retorno anual basada en el comportamiento histórico reciente." },
+                  var95: { label: "VaR 95% diario", color: (v) => Number(v) > 3 ? "var(--red-600)" : "var(--text-primary)", suffix: "%", explain: "Value at Risk al 95% de confianza (paramétrico). Indica la pérdida máxima diaria esperada con 95% de probabilidad. Si es 2%, un día malo típico no supera el -2%. Valores > 3% indican alta concentración de riesgo." },
+                  painIndex: { label: "Pain Index", color: (v) => Number(v) > 10 ? "var(--red-600)" : Number(v) > 5 ? "var(--amber-600)" : "var(--green-600)", suffix: "%", explain: "Media de todas las caídas desde máximos a lo largo del histórico. A diferencia del Max Drawdown (peor caso), el Pain Index mide el dolor promedio. < 5% es excelente, > 10% indica drawdowns frecuentes." },
+                  recoveryFactor: { label: "Recovery Factor", color: (v) => Number(v) >= 1 ? "var(--green-600)" : "var(--text-primary)", suffix: "", explain: "CAGR dividido entre el Max Drawdown absoluto. Mide la capacidad de recuperación: si es > 1 el portafolio genera más rentabilidad de la que pierde en sus peores caídas. > 1 es positivo, > 2 es excelente." },
+                };
+                return (
+                  <div className="riskMetricsGrid">
+                    {Object.entries(RISK_INFO).map(([key, meta]) => (
+                      <div key={key} className="riskMetricCard" style={{ position: "relative" }}>
+                        <div className="riskMetricLabel" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          {meta.label}
+                          <button type="button"
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "0.75rem", padding: "0 2px", lineHeight: 1 }}
+                            onClick={() => setShowRiskInfo(showRiskInfo === key ? null : key)}
+                            title="Info"
+                          >ⓘ</button>
+                        </div>
+                        {showRiskInfo === key ? (
+                          <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 10, background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "10px 12px", fontSize: "0.75rem", color: "var(--text-secondary)", maxWidth: 260, boxShadow: "var(--shadow-lg)", lineHeight: 1.5 }}>
+                            {meta.explain}
+                            <button type="button" onClick={() => setShowRiskInfo(null)}
+                              style={{ display: "block", marginTop: 6, fontSize: "0.7rem", background: "none", border: "none", cursor: "pointer", color: "var(--blue-600)" }}>
+                              Cerrar
+                            </button>
+                          </div>
+                        ) : null}
+                        <div className="riskMetricValue" style={{ color: meta.color(riskMetrics[key]) }}>
+                          {riskMetrics[key]}{meta.suffix}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 8 }}>
+                Calculado a partir de los snapshots del portafolio (retornos diarios). Se requieren al menos 4 puntos históricos.
+              </p>
+            </section>
+          ) : null}
+
           {error ? <pre className="error">{error}</pre> : null}
         </>
       ) : null}
 
       {currentPage === "portafolio" ? (
         <>
-          <h1>Portafolios</h1>
-          <section>
-            <div className="actionsRow">
-              <button
-                type="button"
-                className={`buttonSecondary iconToggleButton${
-                  showPortafolioForm ? " iconToggleButtonOpen" : ""
-                }`}
-                onClick={() => setShowPortafolioForm((prev) => !prev)}
-                title={showPortafolioForm ? "Ocultar formulario" : "Mostrar formulario"}
-                aria-label={showPortafolioForm ? "Ocultar formulario" : "Mostrar formulario"}
-              >
-                <img src="/buttons/add.svg" alt="" aria-hidden="true" className="iconToggleImage" />
-              </button>
-            </div>
-            {showPortafolioForm ? (
-              <>
-                <h2>{editingId ? "Editar portafolio" : "Crear portafolio"}</h2>
-                <form onSubmit={handlePortafolioSubmit} className="form portafolioFormGrid">
-                  <div className="portafolioField portafolioFieldNombre">
-                    <label htmlFor="pfNombre">Nombre</label>
-                    <input
-                      id="pfNombre"
-                      name="pfNombre"
-                      value={pfNombre}
-                      onChange={(e) => setPfNombre(e.target.value)}
-                      required
-                    />
-                  </div>
+          <h1>{selectedPortafolio ? selectedPortafolio.nombre : "Portafolios"}</h1>
+          {!selectedPortafolio && portafolios.length === 0 ? (
+            <section>
+              <p style={{ color: "var(--text-muted)" }}>
+                Crea tu primer portafolio usando el botón <strong>+ Nuevo</strong> del menú lateral.
+              </p>
+            </section>
+          ) : !selectedPortafolio ? (
+            <section>
+              <p style={{ color: "var(--text-muted)" }}>
+                Selecciona un portafolio del menú lateral para ver sus posiciones.
+              </p>
+            </section>
+          ) : null}
 
-                  <div className="portafolioField portafolioFieldMoneda">
-                    <label htmlFor="pfMoneda">DIVISA</label>
-                    <select
-                      id="pfMoneda"
-                      value={pfMonedaId}
-                      onChange={(e) => setPfMonedaId(e.target.value)}
-                    >
-                      <option value="">Sin moneda</option>
-                      {monedas.map((moneda) => (
-                        <option key={moneda.id} value={moneda.id}>
-                          {moneda.nombre} {moneda.ticker ? `(${moneda.ticker})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+          {showPortafolioForm ? (
+            <section>
+              <h2>{editingId ? "Editar portafolio" : "Nuevo portafolio"}</h2>
+              <form onSubmit={handlePortafolioSubmit} className="form portafolioFormGrid">
+                <div className="portafolioField portafolioFieldNombre">
+                  <label htmlFor="pfNombre">Nombre</label>
+                  <input
+                    id="pfNombre"
+                    name="pfNombre"
+                    value={pfNombre}
+                    onChange={(e) => setPfNombre(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="portafolioField portafolioFieldMoneda">
+                  <label htmlFor="pfMoneda">Divisa</label>
+                  <select
+                    id="pfMoneda"
+                    value={pfMonedaId}
+                    onChange={(e) => setPfMonedaId(e.target.value)}
+                  >
+                    <option value="">Sin moneda</option>
+                    {monedas.map((moneda) => (
+                      <option key={moneda.id} value={moneda.id}>
+                        {moneda.nombre} {moneda.ticker ? `(${moneda.ticker})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="portafolioField portafolioFieldCategoria">
+                  <label htmlFor="pfCategoria">Categoría</label>
+                  <select
+                    id="pfCategoria"
+                    value={pfCategoriaId}
+                    onChange={(e) => setPfCategoriaId(e.target.value)}
+                  >
+                    <option value="">Sin categoría</option>
+                    {categorias.map((categoria) => (
+                      <option key={categoria.id} value={categoria.id}>
+                        {categoria.categoria}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="actionsRow portafolioFormActions">
+                  <button type="submit" disabled={loading}>
+                    {loading ? "Procesando..." : editingId ? "Guardar cambios" : "Crear"}
+                  </button>
+                  <button
+                    type="button"
+                    className="buttonSecondary"
+                    onClick={() => { setEditingId(null); clearPortafolioForm(); setShowPortafolioForm(false); }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </section>
+          ) : null}
 
-                  <div className="portafolioField portafolioFieldCategoria">
-                    <label htmlFor="pfCategoria">Categoria</label>
-                    <select
-                      id="pfCategoria"
-                      value={pfCategoriaId}
-                      onChange={(e) => setPfCategoriaId(e.target.value)}
-                    >
-                      <option value="">Sin categoria</option>
-                      {categorias.map((categoria) => (
-                        <option key={categoria.id} value={categoria.id}>
-                          {categoria.categoria}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="actionsRow portafolioFormActions">
-                    <button type="submit" disabled={loading}>
-                      {loading ? "Procesando..." : editingId ? "Guardar cambios" : "Crear"}
-                    </button>
-                    {editingId ? (
-                      <button
-                        type="button"
-                        className="buttonSecondary"
-                        onClick={() => {
-                          setEditingId(null);
-                          clearPortafolioForm();
-                          setShowPortafolioForm(false);
-                        }}
-                      >
-                        Cancelar edicion
-                      </button>
-                    ) : null}
-                  </div>
-                </form>
-              </>
-            ) : null}
-          </section>
-
-          <section>
-            <div className="listHeader">
-              <h2>Tus portafolios</h2>
-            </div>
-            {loadingData ? <p>Cargando...</p> : null}
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Moneda</th>
-                  <th>Categoria</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {portafolios.length === 0 ? (
-                  <tr>
-                    <td colSpan="4">No hay portafolios todavia</td>
-                  </tr>
-                ) : (
-                  pagedPortafolios.map((p) => (
-                    <tr key={p.id}>
-                      <td>{p.nombre}</td>
-                      <td>{p.moneda_nombre || "-"}</td>
-                      <td>{p.categoria || "-"}</td>
-                      <td className="actionsCell">
-                        <button
-                          type="button"
-                          className="buttonSecondary iconActionButton"
-                          onClick={() => loadPosiciones(p)}
-                          title="Ver posiciones"
-                          aria-label="Ver posiciones"
-                        >
-                          <img
-                            src="/buttons/view.svg"
-                            alt=""
-                            aria-hidden="true"
-                            className="iconActionImage"
-                          />
-                        </button>
-                        <button
-                          type="button"
-                          className="buttonSecondary iconActionButton"
-                          onClick={() => startEdit(p)}
-                          title="Editar"
-                          aria-label="Editar"
-                        >
-                          <img
-                            src="/buttons/edit.svg"
-                            alt=""
-                            aria-hidden="true"
-                            className="iconActionImage"
-                          />
-                        </button>
-                        <button
-                          type="button"
-                          className="buttonDanger iconActionButton"
-                          onClick={() => handleDelete(p.id)}
-                          title="Eliminar"
-                          aria-label="Eliminar"
-                        >
-                          <img
-                            src="/buttons/delete.svg"
-                            alt=""
-                            aria-hidden="true"
-                            className="iconActionImage"
-                          />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-            {renderPagination(currentPortafoliosPage, totalPortafoliosPages, setPortafoliosPage)}
-          </section>
-
-          <section>
+          <section id="sec-portafolio-posiciones">
             <h2>
               {selectedPortafolio
                 ? `Posiciones de ${selectedPortafolio.nombre}`
@@ -2856,7 +3707,7 @@ export default function App() {
             {selectedPortafolio && resumenPosiciones ? (
               <div className="summaryGrid">
                 <article className="summaryCard">
-                  <h2>{resumenPosiciones.total_posiciones || 0}</h2>
+                  <h2>{posiciones.filter((p) => Number(p.cantidad || 0) > 0).length}</h2>
                   <p>Total posiciones</p>
                 </article>
                 <article className="summaryCard">
@@ -3062,8 +3913,30 @@ export default function App() {
                             setPosicionesSort((prev) => getNextSortState(prev, "variacion_diaria", "desc"))
                           }
                         >
-                          Variacion diaria{" "}
+                          Var. diaria{" "}
                           <span>{getSortIndicator(posicionesSort, "variacion_diaria")}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button
+                          type="button"
+                          className="tableSortButton"
+                          onClick={() =>
+                            setPosicionesSort((prev) => getNextSortState(prev, "valor_total", "desc"))
+                          }
+                        >
+                          Valor total <span>{getSortIndicator(posicionesSort, "valor_total")}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button
+                          type="button"
+                          className="tableSortButton"
+                          onClick={() =>
+                            setPosicionesSort((prev) => getNextSortState(prev, "rentabilidad", "desc"))
+                          }
+                        >
+                          Rentab. <span>{getSortIndicator(posicionesSort, "rentabilidad")}</span>
                         </button>
                       </th>
                     </tr>
@@ -3071,7 +3944,7 @@ export default function App() {
                   <tbody>
                     {visiblePosiciones.length === 0 ? (
                       <tr>
-                        <td colSpan="4">No hay posiciones para el filtro actual</td>
+                        <td colSpan="6">No hay posiciones para el filtro actual</td>
                       </tr>
                     ) : (
                       visiblePosiciones.map((posicion) => {
@@ -3103,10 +3976,18 @@ export default function App() {
                               <td>{posicion.activo_nombre || "-"}</td>
                               <td>{formatPrice(posicion.precio_actual)}</td>
                               <td>{formatPercent(posicion.variacion_diaria)}</td>
+                              <td>
+                                {Number(posicion.valor_total || posicion.valor_actual || 0).toFixed(2)}
+                                {posicion.precio_actual_moneda_ticker ? ` ${posicion.precio_actual_moneda_ticker}` : ""}
+                              </td>
+                              <td style={{ color: Number(posicion.rentabilidad || 0) >= 0 ? "var(--green-600)" : "var(--red-600)", fontWeight: 600 }}>
+                                {Number(posicion.rentabilidad || 0) >= 0 ? "+" : ""}
+                                {Number(posicion.rentabilidad || 0).toFixed(2)}%
+                              </td>
                             </tr>
                             {isExpanded ? (
                               <tr>
-                                <td colSpan="4">
+                                <td colSpan="6">
                                   <article className="assetCard">
                                     <h3>{expandedPosicion?.activo_nombre || "-"}</h3>
                                     <h4>Posicion</h4>
@@ -3118,21 +3999,6 @@ export default function App() {
                                       <p>
                                         <strong>Precio promedio:</strong>{" "}
                                         {Number(expandedPosicion?.preciopromedio || 0).toFixed(4)}
-                                      </p>
-                                      <p>
-                                        <strong>Rentabilidad:</strong>{" "}
-                                        {Number(expandedPosicion?.rentabilidad || 0).toFixed(2)}%
-                                      </p>
-                                      <p>
-                                        <strong>Valor total:</strong>{" "}
-                                        {Number(
-                                          expandedPosicion?.valor_total ||
-                                            expandedPosicion?.valor_actual ||
-                                            0
-                                        ).toFixed(2)}
-                                        {expandedPosicion?.precio_actual_moneda_ticker
-                                          ? ` ${expandedPosicion.precio_actual_moneda_ticker}`
-                                          : ""}
                                       </p>
                                     </div>
                                     <div style={{ marginTop: "12px" }}>
@@ -3147,14 +4013,7 @@ export default function App() {
                                           {expandedPosicionActivo?.categoria || "-"}
                                         </p>
                                         <p>
-                                          <strong>Icono:</strong>{" "}
-                                          {expandedPosicionIconSrc ||
-                                            expandedPosicionActivo?.icono ||
-                                            expandedPosicion?.activo_icono ||
-                                            "-"}
-                                        </p>
-                                        <p>
-                                          <strong>Vista icono:</strong>{" "}
+                                          <strong>Logo:</strong>{" "}
                                           {expandedPosicionIconSrc ? (
                                             <img
                                               src={expandedPosicionIconSrc}
@@ -3260,6 +4119,43 @@ export default function App() {
                                         </div>
                                       ) : null}
                                     </div>
+                                    <div style={{ marginTop: "12px" }}>
+                                      <h4>Nota</h4>
+                                      {editingNotaPosicionId === expandedPosicion?.id ? (
+                                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                          <textarea
+                                            className="notaTextarea"
+                                            value={notaPosicionDraft}
+                                            onChange={(e) => setNotaPosicionDraft(e.target.value)}
+                                            placeholder="Escribe tu tesis de inversión u observaciones..."
+                                          />
+                                          <div className="actionsRow">
+                                            <button type="button" className="buttonPrimary"
+                                              onClick={() => handleGuardarNotaPosicion(expandedPosicion.id)}>
+                                              Guardar
+                                            </button>
+                                            <button type="button" className="buttonSecondary"
+                                              onClick={() => setEditingNotaPosicionId(null)}>
+                                              Cancelar
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div>
+                                          <p style={{ fontSize: "0.83rem", whiteSpace: "pre-wrap", color: "var(--text-secondary)" }}>
+                                            {expandedPosicion?.nota || "Sin nota."}
+                                          </p>
+                                          <button type="button" className="buttonSecondary"
+                                            style={{ marginTop: 4 }}
+                                            onClick={() => {
+                                              setEditingNotaPosicionId(expandedPosicion.id);
+                                              setNotaPosicionDraft(expandedPosicion.nota || "");
+                                            }}>
+                                            Editar nota
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
                                   </article>
                                 </td>
                               </tr>
@@ -3271,20 +4167,7 @@ export default function App() {
                   </tbody>
                 </table>
 
-                <div className="actionsRow">
-                  <button
-                    type="button"
-                    className="buttonSecondary"
-                    onClick={() => setShowZeroPosiciones((prev) => !prev)}
-                  >
-                    {showZeroPosiciones
-                      ? "Ocultar posiciones con cantidad 0"
-                      : "Mostrar posiciones con cantidad 0"}
-                  </button>
-                </div>
-
-                <section>
-                  <h3>Graficos de posiciones</h3>
+                <section className="sectionCharts">
                   <div className="dashboardChartsGrid">
                     <article className="chartCard chartCardWide">
                       <div className="chartCardHeader">
@@ -3639,9 +4522,695 @@ export default function App() {
               </>
             ) : null}
           </section>
+
+          {selectedPortafolio && heatmapData.length > 0 ? (
+            <section id="sec-portafolio-heatmap">
+              <h2>Mapa de calor de posiciones</h2>
+              <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: 8 }}>
+                Tamaño proporcional al peso. Color según variación diaria si disponible, o rentabilidad total (desde compra) si no hay datos de mercado en tiempo real.
+              </p>
+              <div className="heatmapGrid">
+                {heatmapData
+                  .sort((a, b) => b.size - a.size)
+                  .map((item) => {
+                    const v = Number(item.variacion || 0);
+                    const intensity = Math.min(Math.abs(v) / 5, 1);
+                    const bg = v >= 0
+                      ? `rgba(22, 163, 74, ${0.25 + intensity * 0.65})`
+                      : `rgba(220, 38, 38, ${0.25 + intensity * 0.65})`;
+                    const flex = Math.max(50, (Number(item.size) / heatmapData[0].size) * 180);
+                    return (
+                      <div
+                        key={item.name}
+                        className="heatmapCell"
+                        style={{ background: bg, flex: `0 0 ${flex}px`, maxWidth: `${flex}px` }}
+                        title={`${item.name}: ${item.peso}% del portafolio | ${v >= 0 ? "+" : ""}${v.toFixed(2)}% ${item.variacionEsDiaria ? "hoy" : "rentabilidad total"}`}
+                      >
+                        <span className="heatmapCellTicker">{item.name}</span>
+                        <span className="heatmapCellPct">{v >= 0 ? "+" : ""}{v.toFixed(2)}%</span>
+                      </div>
+                    );
+                  })}
+              </div>
+            </section>
+          ) : null}
+
+          {correlationMatrix && correlationMatrix.keys.length >= 2 ? (
+            <section id="sec-portafolio-correlacion">
+              <h2>Matriz de correlacion</h2>
+              <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: 8 }}>
+                Basada en los retornos diarios de los snapshots. Escala de -1 (inversa) a +1 (directa).
+              </p>
+              <div style={{ overflowX: "auto" }}>
+                <div className="correlationGrid" style={{
+                  gridTemplateColumns: `80px repeat(${correlationMatrix.keys.length}, 44px)`
+                }}>
+                  <div className="correlationLabel" />
+                  {correlationMatrix.keys.map((k) => (
+                    <div key={k.key} className="correlationLabel" title={k.label}
+                      style={{ fontSize: "0.65rem", textAlign: "center" }}>
+                      {k.label.split("(")[0].trim().slice(0, 6)}
+                    </div>
+                  ))}
+                  {correlationMatrix.keys.map((ki, rowIdx) => (
+                    <Fragment key={ki.key}>
+                      <div className="correlationLabel" title={ki.label}>{ki.label.split("(")[0].trim().slice(0, 10)}</div>
+                      {correlationMatrix.matrix[rowIdx].map((val, colIdx) => {
+                        const v = Number(val || 0);
+                        const abs = Math.abs(v);
+                        const bg = v >= 0
+                          ? `rgba(22,163,74,${abs * 0.7})`
+                          : `rgba(220,38,38,${abs * 0.7})`;
+                        return (
+                          <div key={colIdx} className="correlationCell"
+                            style={{ background: bg, color: abs > 0.4 ? "#fff" : "var(--text-primary)" }}
+                            title={`${ki.label} ↔ ${correlationMatrix.keys[colIdx].label}: ${v.toFixed(2)}`}>
+                            {v.toFixed(2)}
+                          </div>
+                        );
+                      })}
+                    </Fragment>
+                  ))}
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          {selectedPortafolio ? (
+            <section id="sec-portafolio-dividendos">
+              <div className="listHeader">
+                <h2>Dividendos del portafolio</h2>
+                <button type="button" className="buttonSecondary"
+                  onClick={() => setShowDividendoForm((prev) => !prev)}>
+                  {showDividendoForm ? "Cancelar" : "+ Registrar dividendo"}
+                </button>
+              </div>
+              {showDividendoForm ? (
+                <form onSubmit={handleCrearDividendo} className="form" style={{ maxWidth: 480 }}>
+                  <div className="formField">
+                    <label>Posicion</label>
+                    <select value={divPosicionId} onChange={(e) => setDivPosicionId(e.target.value)} required>
+                      <option value="">Selecciona posicion</option>
+                      {posiciones.filter((p) => Number(p.cantidad || 0) > 0).map((p) => (
+                        <option key={p.id} value={p.id}>{p.activo_nombre} ({p.ticker})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="formField">
+                    <label>Fecha</label>
+                    <input type="date" value={divFecha} onChange={(e) => setDivFecha(e.target.value)} required />
+                  </div>
+                  <div className="formField">
+                    <label>Importe</label>
+                    <input type="number" min="0" step="0.0001" value={divImporte}
+                      onChange={(e) => setDivImporte(e.target.value)} placeholder="0.00" required />
+                  </div>
+                  <div className="formField">
+                    <label>Moneda</label>
+                    <select value={divMonedaId} onChange={(e) => setDivMonedaId(e.target.value)}>
+                      <option value="">Moneda del portafolio</option>
+                      {monedas.map((m) => (
+                        <option key={m.id} value={m.id}>{m.nombre} ({m.ticker})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="formField">
+                    <label>Observacion</label>
+                    <input value={divObservacion} onChange={(e) => setDivObservacion(e.target.value)}
+                      placeholder="Opcional" />
+                  </div>
+                  <div className="actionsRow">
+                    <button type="submit" className="buttonPrimary" disabled={loading}>
+                      {loading ? "Guardando..." : "Registrar"}
+                    </button>
+                  </div>
+                </form>
+              ) : null}
+              {loadingDividendos ? <p>Cargando dividendos...</p> : null}
+              {dividendos.length > 0 ? (
+                <>
+                  <div className="dividendoResumen">
+                    <div className="dividendoResumenItem">
+                      <span className="dividendoResumenLabel">Total año actual</span>
+                      <span className="dividendoResumenValue">{dividendosTotalAnio.toFixed(2)}</span>
+                    </div>
+                    <div className="dividendoResumenItem">
+                      <span className="dividendoResumenLabel">Total historico</span>
+                      <span className="dividendoResumenValue">{dividendosTotalHistorico.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <table className="table">
+                    <thead>
+                      <tr><th>Fecha</th><th>Activo</th><th>Importe</th><th>Moneda</th><th>Obs.</th><th>Acc.</th></tr>
+                    </thead>
+                    <tbody>
+                      {dividendos.map((d) => (
+                        <tr key={d.id}>
+                          <td>{formatSnapshotDate(d.fecha)}</td>
+                          <td>{d.activo_nombre} ({d.ticker})</td>
+                          <td>{Number(d.importe || 0).toFixed(4)}</td>
+                          <td>{d.moneda_ticker || "-"}</td>
+                          <td>{d.observacion || "-"}</td>
+                          <td className="actionsCell">
+                            <button type="button" className="buttonDanger"
+                              onClick={() => handleEliminarDividendo(d.id)}>Eliminar</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              ) : !loadingDividendos ? (
+                <p style={{ color: "var(--text-muted)" }}>No hay dividendos registrados.</p>
+              ) : null}
+            </section>
+          ) : null}
+
+          {(Object.keys(scenarioCategories).length > 0 || posiciones.filter(p => Number(p.cantidad||0) > 0).length > 0) ? (
+            <section id="sec-portafolio-simulador">
+              <h2>Simulador de escenarios</h2>
+              <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginBottom: 14 }}>
+                Aplica shocks porcentuales a tus activos y visualiza el impacto inmediato y a largo plazo sobre el portafolio.
+              </p>
+
+              {/* ── 1+15: Escenarios predefinidos / Stress tests ── */}
+              <div style={{ marginBottom: 16 }}>
+                <strong style={{ fontSize: "0.78rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Escenarios históricos
+                </strong>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                  {PRESET_SCENARIOS.map((p) => (
+                    <button key={p.label} type="button"
+                      className="buttonSecondary"
+                      style={{ fontSize: "0.73rem", padding: "3px 10px" }}
+                      title={p.description}
+                      onClick={() => applyPreset(p)}>
+                      {p.icon} {p.label}
+                    </button>
+                  ))}
+                  <button type="button" className="buttonSecondary"
+                    style={{ fontSize: "0.73rem", padding: "3px 10px" }}
+                    title="Genera un escenario de mercado aleatorio pero coherente: distribución realista con correlaciones por beta"
+                    onClick={applyRandomShock}>
+                    🎲 Aleatorio coherente
+                  </button>
+                  <button type="button" className="buttonSecondary"
+                    style={{ fontSize: "0.73rem", padding: "3px 10px", marginLeft: "auto" }}
+                    onClick={() => setScenarioShocks({})}>
+                    ↺ Reset
+                  </button>
+                </div>
+              </div>
+
+              {/* ── Shocks + Resultado + Gráfico de impacto ── */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                <div>
+                  <strong style={{ fontSize: "0.82rem", display: "block", marginBottom: 8 }}>
+                    Shocks por posición
+                  </strong>
+                  {posiciones.filter((p) => Number(p.cantidad || 0) > 0).map((p) => {
+                    const key = String(p.id);
+                    const shock = Number(effectiveShocks[key] || 0);
+                    return (
+                      <div key={key} className="scenarioSliderRow">
+                        <label style={{ minWidth: 90, fontSize: "0.76rem" }} title={p.activo_nombre || p.ticker}>
+                          {(p.ticker || p.activo_nombre || "?").slice(0, 10)}
+                        </label>
+                        <input type="range" min="-80" max="80" step="1" value={shock}
+                          onChange={(e) => setScenarioShocks((prev) => ({ ...prev, [key]: Number(e.target.value) }))} />
+                        <input type="number" min="-80" max="80" step="1" value={shock}
+                          onChange={(e) => setScenarioShocks((prev) => ({ ...prev, [key]: Math.max(-80, Math.min(80, Number(e.target.value))) }))}
+                          style={{ width: 54, padding: "2px 4px", fontSize: "0.78rem", textAlign: "right" }} />
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", minWidth: 12 }}>%</span>
+                      </div>
+                    );
+                  })}
+                  {/* ── Resultado + 13: VaR dinámico ── */}
+                  <div style={{ marginTop: 12, padding: "12px 14px", background: "var(--bg-raised)", borderRadius: "var(--radius-md)", border: "1px solid var(--border)" }}>
+                    <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginBottom: 4 }}>
+                      Valor actual: <strong>{scenarioCurrentTotal.toFixed(2)}</strong>
+                    </div>
+                    <div className="scenarioResult" style={{ color: scenarioResultFinal >= scenarioCurrentTotal ? "var(--green-600)" : "var(--red-600)" }}>
+                      {scenarioResultFinal.toFixed(2)}
+                      <span style={{ fontSize: "0.88rem", marginLeft: 8 }}>
+                        ({scenarioCurrentTotal > 0 ? ((scenarioResultFinal - scenarioCurrentTotal) / scenarioCurrentTotal * 100).toFixed(2) : 0}%)
+                      </span>
+                    </div>
+                    <div style={{ fontSize: "0.73rem", color: "var(--text-muted)", marginTop: 2 }}>
+                      Diferencia: {(scenarioResultFinal - scenarioCurrentTotal) >= 0 ? "+" : ""}{(scenarioResultFinal - scenarioCurrentTotal).toFixed(2)}
+                    </div>
+                    {dynamicVar95 !== null ? (
+                      <div style={{ fontSize: "0.73rem", color: "var(--amber-600)", marginTop: 6, borderTop: "1px solid var(--border)", paddingTop: 6 }}>
+                        VaR 95% diario post-shock: <strong>-{dynamicVar95.toFixed(2)}</strong>
+                        <span style={{ color: "var(--text-muted)", marginLeft: 4 }}>
+                          (pérdida máxima diaria esperada con 95% de confianza)
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div>
+                  <strong style={{ fontSize: "0.82rem" }}>Impacto por posición</strong>
+                  <div className="chartWrap" style={{ marginTop: 8 }}>
+                    <ResponsiveContainer width="100%" height={Math.max(180, scenarioBarData.length * 26)}>
+                      <BarChart data={scenarioBarData} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" tick={{ fontSize: 9 }} tickFormatter={(v) => v >= 1000 ? (v/1000).toFixed(0)+"k" : String(v)} />
+                        <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={70} />
+                        <Tooltip formatter={(v) => [v.toLocaleString("es-ES", { maximumFractionDigits: 0 })]} />
+                        <Legend wrapperStyle={{ fontSize: "0.73rem" }} />
+                        <Bar dataKey="actual" name="Actual" fill="#3b82f6" />
+                        <Bar dataKey="escenario" name="Escenario" fill="#f97316" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── 14: Advertencias de inconsistencia ── */}
+              {scenarioWarnings.length > 0 ? (
+                <div style={{ marginTop: 12, padding: "10px 14px", background: "var(--amber-50)", border: "1px solid var(--amber-500)", borderRadius: "var(--radius-md)" }}>
+                  <strong style={{ fontSize: "0.78rem", color: "var(--amber-600)" }}>⚠ Advertencias de consistencia</strong>
+                  {scenarioWarnings.map((w, i) => (
+                    <p key={i} style={{ fontSize: "0.75rem", color: "var(--amber-600)", margin: "4px 0 0" }}>{w}</p>
+                  ))}
+                </div>
+              ) : null}
+
+              {/* ── Toggles de vistas adicionales ── */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 16 }}>
+                <button type="button"
+                  className={`buttonSecondary chartToggleButton${showImpactTable ? " chartToggleButtonActive" : ""}`}
+                  style={{ fontSize: "0.73rem" }}
+                  onClick={() => setShowImpactTable((p) => !p)}>
+                  Tabla de impacto
+                </button>
+                <button type="button"
+                  className={`buttonSecondary chartToggleButton${showWaterfall ? " chartToggleButtonActive" : ""}`}
+                  style={{ fontSize: "0.73rem" }}
+                  onClick={() => setShowWaterfall((p) => !p)}>
+                  Gráfico cascada
+                </button>
+                <button type="button"
+                  className={`buttonSecondary chartToggleButton${showScenarioTreemap ? " chartToggleButtonActive" : ""}`}
+                  style={{ fontSize: "0.73rem" }}
+                  onClick={() => setShowScenarioTreemap((p) => !p)}>
+                  Mapa de impacto
+                </button>
+                <button type="button"
+                  className={`buttonSecondary chartToggleButton${showSavedScenarios ? " chartToggleButtonActive" : ""}`}
+                  style={{ fontSize: "0.73rem" }}
+                  onClick={() => setShowSavedScenarios((p) => !p)}>
+                  Escenarios guardados {savedScenarios.length > 0 ? `(${savedScenarios.length})` : ""}
+                </button>
+              </div>
+
+              {/* ── 4: Tabla de impacto detallada ── */}
+              {showImpactTable && impactTableData.length > 0 ? (
+                <div style={{ marginTop: 14 }}>
+                  <strong style={{ fontSize: "0.82rem" }}>Tabla de impacto detallada</strong>
+                  <div style={{ overflowX: "auto", marginTop: 8 }}>
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Activo / Categoría</th>
+                          <th>Shock %</th>
+                          <th>Valor actual</th>
+                          <th>Valor escenario</th>
+                          <th>Diferencia</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {impactTableData.map((row, i) => (
+                          <tr key={i}>
+                            <td>{row.name}</td>
+                            <td style={{ color: row.shockPct > 0 ? "var(--green-600)" : row.shockPct < 0 ? "var(--red-600)" : "var(--text-muted)", fontWeight: 600 }}>
+                              {row.shockPct > 0 ? "+" : ""}{row.shockPct.toFixed(1)}%
+                            </td>
+                            <td>{row.actual.toFixed(2)}</td>
+                            <td>{row.escenario.toFixed(2)}</td>
+                            <td style={{ color: row.delta >= 0 ? "var(--green-600)" : "var(--red-600)", fontWeight: 600 }}>
+                              {row.delta >= 0 ? "+" : ""}{row.delta.toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr style={{ fontWeight: 700, borderTop: "2px solid var(--border-strong)" }}>
+                          <td colSpan={2}>Total</td>
+                          <td>{scenarioCurrentTotal.toFixed(2)}</td>
+                          <td>{scenarioResultFinal.toFixed(2)}</td>
+                          <td style={{ color: (scenarioResultFinal - scenarioCurrentTotal) >= 0 ? "var(--green-600)" : "var(--red-600)" }}>
+                            {(scenarioResultFinal - scenarioCurrentTotal) >= 0 ? "+" : ""}{(scenarioResultFinal - scenarioCurrentTotal).toFixed(2)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* ── 5: Gráfico cascada (waterfall) ── */}
+              {showWaterfall && waterfallData.length > 0 ? (
+                <div style={{ marginTop: 14 }}>
+                  <strong style={{ fontSize: "0.82rem" }}>Contribución al cambio (cascada)</strong>
+                  <div className="chartWrap" style={{ marginTop: 8 }}>
+                    <ResponsiveContainer width="100%" height={Math.max(160, waterfallData.length * 24)}>
+                      <BarChart data={waterfallData} layout="vertical" margin={{ top: 4, right: 20, left: 0, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" tick={{ fontSize: 9 }} tickFormatter={(v) => v >= 1000 ? (v/1000).toFixed(0)+"k" : String(v)} />
+                        <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={80} />
+                        <Tooltip formatter={(v) => [(v >= 0 ? "+" : "") + v.toLocaleString("es-ES", { maximumFractionDigits: 0 })]} />
+                        <Bar dataKey="delta" name="Cambio">
+                          {waterfallData.map((entry, index) => (
+                            <Cell key={index} fill={entry.delta >= 0 ? "#16a34a" : "#dc2626"} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* ── 6: Mapa de impacto (Treemap) ── */}
+              {showScenarioTreemap && scenarioTreemapData.length > 0 ? (
+                <div style={{ marginTop: 14 }}>
+                  <strong style={{ fontSize: "0.82rem" }}>Mapa de impacto — tamaño = valor, color = shock</strong>
+                  <div className="chartWrap" style={{ marginTop: 8 }}>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <Treemap
+                        data={scenarioTreemapData}
+                        dataKey="size"
+                        nameKey="name"
+                        content={({ x, y, width, height, name, shock }) => {
+                          const shockVal = Number(shock || 0);
+                          const intensity = Math.min(Math.abs(shockVal) / 50, 1);
+                          const fill = shockVal > 0
+                            ? `rgba(22,163,74,${0.25 + intensity * 0.65})`
+                            : shockVal < 0 ? `rgba(220,38,38,${0.25 + intensity * 0.65})`
+                            : "var(--bg-subtle)";
+                          return (
+                            <g>
+                              <rect x={x} y={y} width={width} height={height} fill={fill} stroke="var(--bg-surface)" strokeWidth={2} rx={3} />
+                              {width > 40 && height > 22 ? (
+                                <>
+                                  <text x={x + width / 2} y={y + height / 2 - 5} textAnchor="middle" fontSize={10} fill="#fff" fontWeight={700}>{name}</text>
+                                  <text x={x + width / 2} y={y + height / 2 + 9} textAnchor="middle" fontSize={9} fill="#fff">
+                                    {shockVal > 0 ? "+" : ""}{shockVal.toFixed(1)}%
+                                  </text>
+                                </>
+                              ) : null}
+                            </g>
+                          );
+                        }}
+                      />
+                    </ResponsiveContainer>
+                  </div>
+                  <div style={{ display: "flex", gap: 16, marginTop: 6, fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 12, height: 12, background: "rgba(22,163,74,0.8)", borderRadius: 2, display: "inline-block" }} /> Subida</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 12, height: 12, background: "rgba(220,38,38,0.8)", borderRadius: 2, display: "inline-block" }} /> Bajada</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 12, height: 12, background: "var(--bg-subtle)", border: "1px solid var(--border)", borderRadius: 2, display: "inline-block" }} /> Sin shock</span>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* ── 10: Impacto en objetivos ── */}
+              {objetivosImpact.length > 0 ? (
+                <div style={{ marginTop: 16 }}>
+                  <strong style={{ fontSize: "0.82rem" }}>Impacto en tus objetivos financieros</strong>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
+                    {objetivosImpact.map((obj) => (
+                      <div key={obj.id} style={{ flex: "1 1 220px", padding: "10px 12px", background: "var(--bg-raised)", borderRadius: "var(--radius-md)", border: "1px solid var(--border)" }}>
+                        <div style={{ fontSize: "0.8rem", fontWeight: 600, marginBottom: 4 }}>{obj.nombre}</div>
+                        <div style={{ display: "flex", gap: 12, fontSize: "0.73rem" }}>
+                          <div>
+                            <div style={{ color: "var(--text-muted)" }}>Actual</div>
+                            <div style={{ fontWeight: 600 }}>{obj.progActual.toFixed(1)}%</div>
+                          </div>
+                          <div>
+                            <div style={{ color: "var(--text-muted)" }}>Escenario</div>
+                            <div style={{ fontWeight: 600, color: obj.delta >= 0 ? "var(--green-600)" : "var(--red-600)" }}>
+                              {obj.progEscenario.toFixed(1)}%
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ color: "var(--text-muted)" }}>Cambio</div>
+                            <div style={{ fontWeight: 600, color: obj.delta >= 0 ? "var(--green-600)" : "var(--red-600)" }}>
+                              {obj.delta >= 0 ? "+" : ""}{obj.delta.toFixed(1)} pp
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* ── 12: Guardar y comparar escenarios ── */}
+              {showSavedScenarios ? (
+                <div style={{ marginTop: 16, padding: "12px 14px", background: "var(--bg-raised)", borderRadius: "var(--radius-md)", border: "1px solid var(--border)" }}>
+                  <strong style={{ fontSize: "0.82rem" }}>Guardar escenario actual</strong>
+                  <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
+                    <input value={scenarioName} onChange={(e) => setScenarioName(e.target.value)}
+                      placeholder="Nombre del escenario…"
+                      style={{ flex: 1, padding: "4px 8px", fontSize: "0.8rem" }} />
+                    <button type="button" className="buttonPrimary"
+                      style={{ fontSize: "0.78rem", padding: "4px 12px" }}
+                      disabled={!scenarioName.trim()}
+                      onClick={() => {
+                        setSavedScenarios((prev) => [...prev, {
+                          id: Date.now(),
+                          name: scenarioName.trim(),
+                          mode: scenarioMode,
+                          shocks: { ...effectiveShocks },
+                          result: scenarioResultFinal,
+                          current: scenarioCurrentTotal,
+                          pct: scenarioCurrentTotal > 0 ? ((scenarioResultFinal - scenarioCurrentTotal) / scenarioCurrentTotal * 100) : 0,
+                        }]);
+                        setScenarioName("");
+                      }}>
+                      Guardar
+                    </button>
+                  </div>
+                  {savedScenarios.length > 0 ? (
+                    <div style={{ marginTop: 12 }}>
+                      <strong style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>Escenarios guardados</strong>
+                      <table className="table" style={{ marginTop: 6 }}>
+                        <thead>
+                          <tr><th>Nombre</th><th>Modo</th><th>Resultado</th><th>%</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                          {savedScenarios.map((sc) => (
+                            <tr key={sc.id}>
+                              <td>{sc.name}</td>
+                              <td>{sc.mode === "category" ? "Categoría" : "Posición"}</td>
+                              <td>{sc.result.toFixed(2)}</td>
+                              <td style={{ color: sc.pct >= 0 ? "var(--green-600)" : "var(--red-600)", fontWeight: 600 }}>
+                                {sc.pct >= 0 ? "+" : ""}{sc.pct.toFixed(2)}%
+                              </td>
+                              <td className="actionsCell">
+                                <button type="button" className="buttonSecondary" style={{ fontSize: "0.72rem", padding: "2px 8px" }}
+                                  onClick={() => { setScenarioMode(sc.mode); setScenarioShocks(sc.shocks); }}>
+                                  Aplicar
+                                </button>
+                                <button type="button" className="buttonDanger" style={{ fontSize: "0.72rem", padding: "2px 8px" }}
+                                  onClick={() => setSavedScenarios((prev) => prev.filter((s) => s.id !== sc.id))}>
+                                  ✕
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {savedScenarios.length >= 2 ? (
+                        <div style={{ marginTop: 10 }}>
+                          <strong style={{ fontSize: "0.78rem" }}>Comparativa de escenarios guardados</strong>
+                          <div className="chartWrap" style={{ marginTop: 6 }}>
+                            <ResponsiveContainer width="100%" height={Math.max(120, savedScenarios.length * 32)}>
+                              <BarChart data={savedScenarios.map((s) => ({ name: s.name, pct: Number(s.pct.toFixed(2)) }))}
+                                layout="vertical" margin={{ top: 4, right: 20, left: 0, bottom: 4 }}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis type="number" tick={{ fontSize: 9 }} tickFormatter={(v) => v + "%"} />
+                                <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={100} />
+                                <Tooltip formatter={(v) => [v + "%", "Variación"]} />
+                                <Bar dataKey="pct" name="Variación %">
+                                  {savedScenarios.map((s, i) => (
+                                    <Cell key={i} fill={s.pct >= 0 ? "#16a34a" : "#dc2626"} />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/* ── Monte Carlo (features 3,7,8,9,11) ── */}
+              <div style={{ marginTop: 24 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+                  <strong style={{ fontSize: "0.85rem" }}>Monte Carlo</strong>
+                  <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", cursor: "help", borderBottom: "1px dotted var(--text-muted)" }}
+                    title="Movimiento Browniano Geométrico (GBM): simula la evolución del portafolio asumiendo que los retornos siguen una distribución log-normal. En cada paso mensual: V(t+1) = V(t) · exp((μ - σ²/2)·dt + σ·√dt·Z), donde Z ~ N(0,1). Es el modelo estándar en finanzas cuantitativas (Black-Scholes). Los parámetros μ (retorno) y σ (volatilidad) se estiman de los snapshots históricos.">
+                    ¿Qué es GBM? ⓘ
+                  </span>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: "0.78rem", alignItems: "center", marginBottom: 10 }}>
+                  <label>Años:
+                    <input type="number" min="1" max="40" value={monteCarloYears}
+                      onChange={(e) => setMonteCarloYears(Math.max(1, Math.min(40, Number(e.target.value))))}
+                      style={{ width: 52, padding: "2px 4px", marginLeft: 4 }} />
+                  </label>
+                  <label>Simulaciones:
+                    <select value={monteCarloRuns} onChange={(e) => setMonteCarloRuns(Number(e.target.value))}
+                      style={{ padding: "2px 4px", fontSize: "0.78rem", marginLeft: 4 }}>
+                      <option value="200">200</option>
+                      <option value="500">500</option>
+                      <option value="1000">1000</option>
+                    </select>
+                  </label>
+                  <label title="Aportación mensual adicional">Aportación/mes:
+                    <input type="number" min="0" step="50" value={monthlyContribution}
+                      onChange={(e) => setMonthlyContribution(Math.max(0, Number(e.target.value)))}
+                      style={{ width: 72, padding: "2px 4px", marginLeft: 4 }} />
+                  </label>
+                  <label title="Rentabilidad por dividendos anual estimada">Div. yield %:
+                    <input type="number" min="0" max="20" step="0.1" value={dividendYieldPct}
+                      onChange={(e) => setDividendYieldPct(Math.max(0, Math.min(20, Number(e.target.value))))}
+                      style={{ width: 56, padding: "2px 4px", marginLeft: 4 }} />
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: 4 }} title="Compara con rebalanceo anual (reduce volatilidad ~12%)">
+                    <input type="checkbox" checked={showMcRebalancing}
+                      onChange={(e) => setShowMcRebalancing(e.target.checked)} />
+                    Con rebalanceo
+                  </label>
+                </div>
+
+                {riskMetrics ? (
+                  <>
+                    {/* Parámetros de simulación */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 10, padding: "8px 12px", background: "var(--bg-raised)", borderRadius: "var(--radius-md)", border: "1px solid var(--border)", fontSize: "0.78rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <label style={{ color: "var(--text-muted)" }}
+                          title="Retorno anual usado en la simulación. Por defecto usa el calculado de los snapshots.">
+                          Retorno anual:
+                        </label>
+                        <input type="number" step="0.5" value={mcRetornoOverride}
+                          placeholder={riskMetrics.annualReturn}
+                          onChange={(e) => setMcRetornoOverride(e.target.value)}
+                          style={{ width: 72, padding: "2px 6px", fontSize: "0.78rem" }} />
+                        <span style={{ color: "var(--text-muted)" }}>%</span>
+                        {mcRetornoOverride !== "" ? (
+                          <button type="button" className="buttonSecondary"
+                            style={{ fontSize: "0.7rem", padding: "1px 7px" }}
+                            title="Usar retorno calculado de snapshots"
+                            onClick={() => setMcRetornoOverride("")}>
+                            ↺
+                          </button>
+                        ) : null}
+                      </div>
+                      <div>
+                        <span style={{ color: "var(--text-muted)" }}>Volatilidad: </span>
+                        <strong>{riskMetrics.volatilidad}%</strong>
+                      </div>
+                    </div>
+
+                    {monteCarloData.data && monteCarloData.data.length > 0 ? (
+                      <>
+                        {/* Feature 3: bandas de incertidumbre + Feature 9: rebalanceo */}
+                        <div className="chartWrap">
+                          <ResponsiveContainer width="100%" height={240}>
+                            <ComposedChart data={monteCarloData.data} margin={{ top: 4, right: 12, left: 4, bottom: 4 }}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="year" tick={{ fontSize: 10 }} />
+                              <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => (v / 1000).toFixed(0) + "k"} />
+                              <Tooltip formatter={(v) => [v.toLocaleString("es-ES", { maximumFractionDigits: 0 })]} />
+                              <Legend wrapperStyle={{ fontSize: "0.72rem" }} />
+                              {/* Banda P10-P90 */}
+                              <Area type="monotone" dataKey="p90" name="P10–P90" fill="rgba(59,130,246,0.08)" stroke="none" legendType="none" />
+                              <Area type="monotone" dataKey="p10" name="_" fill="var(--bg-surface)" stroke="none" legendType="none" />
+                              {/* Banda P25-P75 */}
+                              <Area type="monotone" dataKey="p75" name="P25–P75" fill="rgba(59,130,246,0.14)" stroke="none" legendType="none" />
+                              <Area type="monotone" dataKey="p25" name="_2" fill="var(--bg-surface)" stroke="none" legendType="none" />
+                              <Line type="monotone" dataKey="p10" name="P10 (pesimista)" stroke="#dc2626" strokeDasharray="4 2" dot={false} />
+                              <Line type="monotone" dataKey="p50" name="P50 (mediana)" stroke="#3b82f6" strokeWidth={2.4} dot={false} />
+                              <Line type="monotone" dataKey="p90" name="P90 (optimista)" stroke="#16a34a" strokeDasharray="4 2" dot={false} />
+                              {showMcRebalancing && monteCarloData.rebal?.data ? (
+                                <Line data={monteCarloData.rebal.data} type="monotone" dataKey="p50" name="P50 con rebalanceo" stroke="#7c3aed" strokeWidth={1.6} strokeDasharray="6 3" dot={false} />
+                              ) : null}
+                            </ComposedChart>
+                          </ResponsiveContainer>
+                        </div>
+
+                        {/* Percentiles finales */}
+                        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10 }}>
+                          {[["P10", monteCarloData.p10, "var(--red-600)"], ["P25", monteCarloData.p25, "var(--amber-600)"], ["P50", monteCarloData.p50, "var(--blue-600)"], ["P75", monteCarloData.p75, "var(--green-600)"], ["P90", monteCarloData.p90, "var(--green-700)"]].map(([label, val, color]) => (
+                            <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                              <span style={{ fontSize: "0.66rem", color: "var(--text-muted)", textTransform: "uppercase" }}>{label}</span>
+                              <span style={{ fontWeight: 700, color, fontSize: "0.9rem" }}>{Number(val).toLocaleString("es-ES", { maximumFractionDigits: 0 })}</span>
+                            </div>
+                          ))}
+                          {showMcRebalancing && monteCarloData.rebal ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                              <span style={{ fontSize: "0.66rem", color: "var(--text-muted)", textTransform: "uppercase" }}>P50 rebal.</span>
+                              <span style={{ fontWeight: 700, color: "var(--violet-600)", fontSize: "0.9rem" }}>
+                                {Number(monteCarloData.rebal.p50).toLocaleString("es-ES", { maximumFractionDigits: 0 })}
+                              </span>
+                            </div>
+                          ) : null}
+                        </div>
+
+                        {/* Feature 7: probabilidad de ruina */}
+                        <div style={{ marginTop: 14, padding: "10px 14px", background: "var(--bg-raised)", borderRadius: "var(--radius-md)", border: "1px solid var(--border)" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                            <strong style={{ fontSize: "0.8rem" }}>Probabilidad de caída</strong>
+                            <label style={{ fontSize: "0.78rem", display: "flex", alignItems: "center", gap: 6 }}>
+                              Umbral: el portafolio cae por debajo del
+                              <input type="number" min="1" max="99" step="5" value={ruinThreshold}
+                                onChange={(e) => setRuinThreshold(Math.max(1, Math.min(99, Number(e.target.value))))}
+                                style={{ width: 52, padding: "2px 4px", fontSize: "0.78rem" }} />
+                              % del valor actual ({(scenarioCurrentTotal * ruinThreshold / 100).toFixed(0)})
+                            </label>
+                          </div>
+                          {typeof monteCarloData.ruinProb === "number" ? (
+                            <div style={{ marginTop: 8, display: "flex", gap: 20, flexWrap: "wrap" }}>
+                              <div>
+                                <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Sin rebalanceo</div>
+                                <div style={{ fontWeight: 700, fontSize: "1.1rem", color: monteCarloData.ruinProb > 20 ? "var(--red-600)" : monteCarloData.ruinProb > 10 ? "var(--amber-600)" : "var(--green-600)" }}>
+                                  {monteCarloData.ruinProb.toFixed(1)}%
+                                </div>
+                              </div>
+                              {showMcRebalancing && monteCarloData.rebal ? (
+                                <div>
+                                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Con rebalanceo</div>
+                                  <div style={{ fontWeight: 700, fontSize: "1.1rem", color: monteCarloData.rebal.ruinProb > 20 ? "var(--red-600)" : monteCarloData.rebal.ruinProb > 10 ? "var(--amber-600)" : "var(--green-600)" }}>
+                                    {monteCarloData.rebal.ruinProb.toFixed(1)}%
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
+                          <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
+                            % de simulaciones en que el portafolio queda por debajo del umbral al cabo de {monteCarloYears} años.
+                          </p>
+                        </div>
+                      </>
+                    ) : null}
+                  </>
+                ) : (
+                  <p style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                    Se necesitan snapshots históricos para calcular retorno y volatilidad.
+                  </p>
+                )}
+              </div>
+            </section>
+          ) : null}
+
           {error ? <pre className="error">{error}</pre> : null}
         </>
       ) : null}
+
       {currentPage === "noticias" ? (
         <>
           <div className="listHeader">
@@ -3658,7 +5227,6 @@ export default function App() {
           {noticiasFetchedAt ? (
             <p className="newsMeta">Ultima actualizacion: {formatNewsDateTime(noticiasFetchedAt)}</p>
           ) : null}
-
           <section>
             <h2>Mas recientes de Yahoo Finance</h2>
             {loadingNoticias && noticiasRecientes.length === 0 ? <p>Cargando noticias...</p> : null}
@@ -3699,7 +5267,7 @@ export default function App() {
             </div>
           </section>
 
-          <section>
+          <section id="sec-cashflow-graficos">
             <h2>Graficos de cashflow</h2>
             <div className="dashboardChartsGrid">
               <article className="chartCard">
@@ -3824,7 +5392,7 @@ export default function App() {
             </div>
           </section>
 
-          <section className="cashflowCalendarSection">
+          <section id="sec-cashflow-calendario" className="cashflowCalendarSection">
             <div className="cashflowCalendarHeader">
               <div>
                 <h2>Calendario de movimientos</h2>
@@ -3974,7 +5542,7 @@ export default function App() {
             )}
           </section>
 
-          <section>
+          <section id="sec-cashflow-movimientos">
             <div className="listHeader">
               <h2>Ultimos movimientos</h2>
               <button
@@ -4188,6 +5756,302 @@ export default function App() {
               </tbody>
             </table>
             {renderPagination(currentMovimientosPage, totalMovimientosPages, setMovimientosPage)}
+          </section>
+          {error ? <pre className="error">{error}</pre> : null}
+        </>
+      ) : null}
+
+      {currentPage === "watchlist" ? (
+        <>
+          <h1>Watchlist</h1>
+
+          <section id="sec-watchlist-watchlist">
+            <div className="listHeader">
+              <h2>Activos seguidos</h2>
+              <button type="button" className="buttonSecondary"
+                onClick={() => setShowWatchlistForm((prev) => !prev)}>
+                {showWatchlistForm ? "Cancelar" : "+ Añadir"}
+              </button>
+            </div>
+            {showWatchlistForm ? (
+              <div className="form" style={{ maxWidth: 420, marginBottom: 16 }}>
+                <div className="formField">
+                  <label>Ticker (Yahoo Finance)</label>
+                  <div className="actionsRow">
+                    <input value={watchlistActivoTicker}
+                      onChange={(e) => setWatchlistActivoTicker(e.target.value.toUpperCase())}
+                      placeholder="Ej: AAPL, MSFT, BTC-USD" />
+                    <button type="button" className="buttonPrimary" disabled={loading}
+                      onClick={handleCrearWatchlistItem}>
+                      {loading ? "Añadiendo..." : "Añadir"}
+                    </button>
+                  </div>
+                </div>
+                <div className="formField">
+                  <label>Nota (opcional)</label>
+                  <input value={watchlistNota} onChange={(e) => setWatchlistNota(e.target.value)}
+                    placeholder="Razón para seguir este activo..." />
+                </div>
+              </div>
+            ) : null}
+            {loadingWatchlist ? <p>Cargando watchlist...</p> : null}
+            {watchlist.length === 0 && !loadingWatchlist ? (
+              <p style={{ color: "var(--text-muted)" }}>
+                No tienes activos en la watchlist. Añade un ticker para empezar a seguirlo.
+              </p>
+            ) : (
+              <div className="watchlistGrid">
+                {watchlist.map((item) => {
+                  const v = Number(item.variacion_porcentual || 0);
+                  return (
+                    <div key={item.id} className="watchlistCard">
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div>
+                          <div className="watchlistCardTicker">{item.ticker}</div>
+                          <div className="watchlistCardName">{item.activo_nombre}</div>
+                        </div>
+                        <button type="button" className="buttonDanger"
+                          style={{ padding: "2px 8px", fontSize: "0.72rem" }}
+                          onClick={() => handleEliminarWatchlistItem(item.id)}>✕</button>
+                      </div>
+                      {item.precio_actual != null ? (
+                        <>
+                          <div className="watchlistCardPrice">{Number(item.precio_actual).toFixed(4)}</div>
+                          <div className="watchlistCardChange"
+                            style={{ color: v >= 0 ? "var(--green-600)" : "var(--red-600)" }}>
+                            {v >= 0 ? "▲" : "▼"} {Math.abs(v).toFixed(2)}%
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Sin datos de mercado</div>
+                      )}
+                      {item.nota ? (
+                        <div style={{ fontSize: "0.72rem", color: "var(--text-secondary)", borderTop: "1px solid var(--border)", paddingTop: 6 }}>
+                          {item.nota}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section id="sec-watchlist-alertas">
+            <div className="listHeader">
+              <h2>Alertas de precio</h2>
+              <button type="button" className="buttonSecondary"
+                onClick={() => setShowAlertaForm((prev) => !prev)}>
+                {showAlertaForm ? "Cancelar" : "+ Nueva alerta"}
+              </button>
+            </div>
+            {showAlertaForm ? (
+              <form onSubmit={handleCrearAlerta} className="form" style={{ maxWidth: 420, marginBottom: 16 }}>
+                <div className="formField">
+                  <label>Activo</label>
+                  <select value={alertaActivoId} onChange={(e) => setAlertaActivoId(e.target.value)} required>
+                    <option value="">Selecciona un activo</option>
+                    {activos.map((a) => (
+                      <option key={a.id} value={a.id}>{a.nombre} ({a.ticker})</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="formField">
+                  <label>Condicion</label>
+                  <select value={alertaTipo} onChange={(e) => setAlertaTipo(e.target.value)}>
+                    <option value="mayor">Precio mayor que</option>
+                    <option value="menor">Precio menor que</option>
+                  </select>
+                </div>
+                <div className="formField">
+                  <label>Precio objetivo</label>
+                  <input type="number" min="0" step="0.0001" value={alertaPrecio}
+                    onChange={(e) => setAlertaPrecio(e.target.value)} placeholder="0.00" required />
+                </div>
+                <button type="submit" className="buttonPrimary" disabled={loading}>
+                  {loading ? "Creando..." : "Crear alerta"}
+                </button>
+              </form>
+            ) : null}
+            {loadingAlertas ? <p>Cargando alertas...</p> : null}
+            {precioAlertas.length === 0 && !loadingAlertas ? (
+              <p style={{ color: "var(--text-muted)" }}>No tienes alertas de precio configuradas.</p>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr><th>Activo</th><th>Condicion</th><th>Precio obj.</th><th>Estado</th><th>Acc.</th></tr>
+                </thead>
+                <tbody>
+                  {precioAlertas.map((alerta) => (
+                    <tr key={alerta.id}>
+                      <td>{alerta.activo_nombre} ({alerta.ticker})</td>
+                      <td>{alerta.tipo === "mayor" ? "Precio >" : "Precio <"}</td>
+                      <td>{Number(alerta.precio_objetivo).toFixed(4)}</td>
+                      <td style={{ color: Number(alerta.activa) === 1 ? "var(--green-600)" : "var(--text-muted)", fontWeight: 600 }}>
+                        {Number(alerta.activa) === 1 ? "Activa" : "Inactiva"}
+                      </td>
+                      <td className="actionsCell">
+                        <button type="button" className="buttonDanger"
+                          onClick={() => handleEliminarAlerta(alerta.id)}>Eliminar</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+          {error ? <pre className="error">{error}</pre> : null}
+        </>
+      ) : null}
+
+      {currentPage === "objetivos" ? (
+        <>
+          <h1>Objetivos financieros</h1>
+          <section>
+            <div className="listHeader">
+              <h2>Mis objetivos</h2>
+              <button type="button" className="buttonSecondary"
+                onClick={() => { clearObjetivoForm(); setShowObjetivoForm((prev) => !prev); }}>
+                {showObjetivoForm ? "Cancelar" : "+ Nuevo objetivo"}
+              </button>
+            </div>
+            {showObjetivoForm ? (
+              <form onSubmit={handleObjetivoSubmit} className="form" style={{ maxWidth: 480, marginBottom: 16 }}>
+                <div className="formField">
+                  <label>Nombre del objetivo</label>
+                  <input value={objNombre} onChange={(e) => setObjNombre(e.target.value)}
+                    placeholder="Ej: Fondo de emergencia, FIRE, Casa..." required />
+                </div>
+                <div className="formField">
+                  <label>Importe objetivo ({monedaResumenTicker})</label>
+                  <input type="number" min="0" step="0.01" value={objMontoObjetivo}
+                    onChange={(e) => setObjMontoObjetivo(e.target.value)} placeholder="200000" required />
+                </div>
+                <div className="formField">
+                  <label>Fecha objetivo</label>
+                  <input type="date" value={objFechaObjetivo}
+                    onChange={(e) => setObjFechaObjetivo(e.target.value)} required />
+                </div>
+                <div className="formField">
+                  <label>Capital inicial ({monedaResumenTicker})</label>
+                  <input type="number" min="0" step="0.01" value={objMontoInicial}
+                    onChange={(e) => setObjMontoInicial(e.target.value)} placeholder="0" />
+                </div>
+                <div className="formField">
+                  <label>Portafolios objetivo</label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.82rem", cursor: "pointer" }}>
+                      <input type="checkbox"
+                        checked={objetivoPortafolioIds.length === 0}
+                        onChange={() => setObjetivoPortafolioIds([])} />
+                      Total (todos los portafolios)
+                    </label>
+                    {portafolios.map((pf) => (
+                      <label key={pf.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.82rem", cursor: "pointer" }}>
+                        <input type="checkbox"
+                          checked={objetivoPortafolioIds.includes(pf.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setObjetivoPortafolioIds((prev) => [...prev, pf.id]);
+                            } else {
+                              setObjetivoPortafolioIds((prev) => prev.filter((id) => id !== pf.id));
+                            }
+                          }} />
+                        {pf.nombre}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="formField">
+                  <label>Nota (opcional)</label>
+                  <textarea className="notaTextarea" value={objNota}
+                    onChange={(e) => setObjNota(e.target.value)}
+                    placeholder="Descripcion o motivacion del objetivo..." />
+                </div>
+                <div className="actionsRow">
+                  <button type="submit" className="buttonPrimary" disabled={loading}>
+                    {loading ? "Guardando..." : editingObjetivoId ? "Actualizar" : "Crear objetivo"}
+                  </button>
+                </div>
+              </form>
+            ) : null}
+            {loadingObjetivos ? <p>Cargando objetivos...</p> : null}
+            {objetivos.length === 0 && !loadingObjetivos ? (
+              <p style={{ color: "var(--text-muted)" }}>No tienes objetivos definidos. Crea uno para empezar.</p>
+            ) : (
+              <div className="objetivosGrid">
+                {objetivos.map((obj) => {
+                  const meta = Number(obj.monto_objetivo || 0);
+                  const inicial = Number(obj.monto_inicial || 0);
+                  const objPfIds = (() => {
+                    try { return obj.portafolio_ids ? JSON.parse(obj.portafolio_ids) : []; } catch { return []; }
+                  })();
+                  const actual = objPfIds.length > 0
+                    ? resumenes.filter((r) => objPfIds.includes(r.portafolio_id || r.id)).reduce((s, r) => s + Number(r.totalCategoriaMoneda || 0), 0)
+                    : totalPortafolioValor;
+                  const progreso = meta > 0 ? Math.min((actual / meta) * 100, 100) : 0;
+                  const fechaObj = new Date(obj.fecha_objetivo);
+                  const hoy = new Date();
+                  const diasRestantes = Math.ceil((fechaObj - hoy) / (1000 * 60 * 60 * 24));
+                  const ahorroMensualNecesario = diasRestantes > 0 && meta > actual
+                    ? ((meta - actual) / (diasRestantes / 30)).toFixed(2)
+                    : 0;
+                  return (
+                    <div key={obj.id} className="objetivoCard">
+                      <div className="objetivoCardNombre">{obj.nombre}</div>
+                      <div className="objetivoCardMeta">
+                        Meta: <strong>{meta.toFixed(2)} {monedaResumenTicker}</strong> · {formatSnapshotDate(obj.fecha_objetivo)}
+                      </div>
+                      {objPfIds.length > 0 ? (
+                        <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: 4 }}>
+                          Portafolios: {portafolios.filter((p) => objPfIds.includes(p.id)).map((p) => p.nombre).join(", ") || "—"}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: 4 }}>
+                          Portafolios: Todos
+                        </div>
+                      )}
+                      <div className="objetivoProgressBar">
+                        <div className="objetivoProgressFill" style={{ width: `${progreso}%`,
+                          background: progreso >= 100 ? "var(--green-600)" : "var(--blue-500)" }} />
+                      </div>
+                      <div className="objetivoProgressPct">
+                        {progreso.toFixed(1)}% completado · {actual.toFixed(0)} / {meta.toFixed(0)} {monedaResumenTicker}
+                      </div>
+                      {diasRestantes > 0 ? (
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: 4 }}>
+                          {diasRestantes} días restantes · Ahorro mensual necesario: <strong>{ahorroMensualNecesario} {monedaResumenTicker}</strong>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: "0.75rem", color: "var(--red-600)", marginTop: 4 }}>Fecha vencida</div>
+                      )}
+                      {obj.nota ? (
+                        <div style={{ fontSize: "0.72rem", color: "var(--text-secondary)", marginTop: 6, borderTop: "1px solid var(--border)", paddingTop: 6 }}>
+                          {obj.nota}
+                        </div>
+                      ) : null}
+                      <div className="actionsRow" style={{ marginTop: 10, gap: 6 }}>
+                        <button type="button" className="buttonSecondary"
+                          style={{ fontSize: "0.75rem", padding: "3px 10px" }}
+                          onClick={() => {
+                            setEditingObjetivoId(obj.id);
+                            setObjNombre(obj.nombre);
+                            setObjMontoObjetivo(String(obj.monto_objetivo));
+                            setObjFechaObjetivo(String(obj.fecha_objetivo).slice(0, 10));
+                            setObjMontoInicial(String(obj.monto_inicial || 0));
+                            setObjNota(obj.nota || "");
+                            try { setObjetivoPortafolioIds(obj.portafolio_ids ? JSON.parse(obj.portafolio_ids) : []); } catch { setObjetivoPortafolioIds([]); }
+                            setShowObjetivoForm(true);
+                          }}>Editar</button>
+                        <button type="button" className="buttonDanger"
+                          style={{ fontSize: "0.75rem", padding: "3px 10px" }}
+                          onClick={() => handleEliminarObjetivo(obj.id)}>Eliminar</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
           {error ? <pre className="error">{error}</pre> : null}
         </>
@@ -4420,7 +6284,7 @@ export default function App() {
       ) : null}
     </>
   ) : (
-    <>
+    <div className="loginWrap">
       <h1>Acceso</h1>
       <div className="tabs">
         <button
@@ -4463,7 +6327,7 @@ export default function App() {
         </button>
       </form>
       {error ? <pre className="error">{error}</pre> : null}
-    </>
+    </div>
   );
 
   return (
@@ -4476,61 +6340,28 @@ export default function App() {
           </div>
           {usuario ? (
             <div className="headerActions">
-              <button
-                type="button"
-                className={
-                  currentPage === "inicio"
-                    ? "buttonSecondary headerButton headerNavButton headerButtonActive"
-                    : "buttonSecondary headerButton headerNavButton"
-                }
-                onClick={() => setCurrentPage("inicio")}
-              >
-                Inicio
-              </button>
-              <button
-                type="button"
-                className={
-                  currentPage === "portafolio"
-                    ? "buttonSecondary headerButton headerNavButton headerButtonActive"
-                    : "buttonSecondary headerButton headerNavButton"
-                }
-                onClick={() => setCurrentPage("portafolio")}
-              >
-                Portafolio
-              </button>
-              <button
-                type="button"
-                className={
-                  currentPage === "cashflow"
-                    ? "buttonSecondary headerButton headerNavButton headerButtonActive"
-                    : "buttonSecondary headerButton headerNavButton"
-                }
-                onClick={() => setCurrentPage("cashflow")}
-              >
-                Cashflow
-              </button>
-              <button
-                type="button"
-                className={
-                  currentPage === "snapshots"
-                    ? "buttonSecondary headerButton headerNavButton headerButtonActive"
-                    : "buttonSecondary headerButton headerNavButton"
-                }
-                onClick={() => setCurrentPage("snapshots")}
-              >
-                Snapshots
-              </button>
-              <button
-                type="button"
-                className={
-                  currentPage === "noticias"
-                    ? "buttonSecondary headerButton headerNavButton headerButtonActive"
-                    : "buttonSecondary headerButton headerNavButton"
-                }
-                onClick={() => setCurrentPage("noticias")}
-              >
-                Noticias
-              </button>
+              {[
+                { key: "inicio",     label: "Inicio" },
+                { key: "cashflow",   label: "CashFlow" },
+                { key: "portafolio", label: "Portafolio" },
+                { key: "watchlist",  label: "Watchlist" },
+                { key: "snapshots",  label: "Snapshots" },
+                { key: "objetivos",  label: "Objetivos" },
+                { key: "noticias",   label: "Noticias" },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={
+                    currentPage === key
+                      ? "buttonSecondary headerButton headerNavButton headerButtonActive"
+                      : "buttonSecondary headerButton headerNavButton"
+                  }
+                  onClick={() => setCurrentPage(key)}
+                >
+                  {label}
+                </button>
+              ))}
               <button
                 type="button"
                 className={
@@ -4539,8 +6370,8 @@ export default function App() {
                     : "buttonSecondary headerButton headerIconButton"
                 }
                 onClick={() => setCurrentPage("settings")}
-                title="Ajustes"
-                aria-label="Ajustes"
+                title="Perfil"
+                aria-label="Perfil"
               >
                 <img src="/buttons/user.svg" alt="" aria-hidden="true" className="headerIconImage" />
                 {unreadNotificaciones > 0 ? (
@@ -4552,7 +6383,82 @@ export default function App() {
         </div>
       </header>
 
-      <main className="container">
+      <div className={`appBody${usuario && (currentPage === "portafolio" || SIDEBAR_ITEMS[currentPage]?.length > 1) ? " hasSidebar" : ""}`}>
+        {usuario && currentPage === "portafolio" ? (
+          <nav className="globalSidebar" aria-label="Portafolios">
+            <div className="globalSidebarTitle">Portafolios</div>
+            <button
+              type="button"
+              className="sidebarPortafolioNew"
+              onClick={() => { clearPortafolioForm(); setEditingId(null); setShowPortafolioForm(true); }}
+            >
+              + Nuevo
+            </button>
+            <div className="globalSidebarDivider" />
+            {orderedPortafolios.map((p) => (
+              <div
+                key={p.id}
+                className={`sidebarPortafolioItem${selectedPortafolio?.id === p.id ? " active" : ""}`}
+              >
+                <button
+                  type="button"
+                  className="sidebarPortafolioItemBtn"
+                  onClick={() => loadPosiciones(p)}
+                  title={p.nombre}
+                >
+                  {p.nombre}
+                </button>
+                <div className="sidebarPortafolioItemActions">
+                  <button
+                    type="button"
+                    className="sidebarPortafolioIconBtn"
+                    onClick={() => startEdit(p)}
+                    title="Editar"
+                  >
+                    <img src="/buttons/edit.svg" alt="Editar" />
+                  </button>
+                  <button
+                    type="button"
+                    className="sidebarPortafolioIconBtn"
+                    onClick={() => handleDelete(p.id)}
+                    title="Eliminar"
+                  >
+                    <img src="/buttons/delete.svg" alt="Eliminar" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </nav>
+        ) : usuario && SIDEBAR_ITEMS[currentPage]?.length > 1 ? (() => {
+          const subPageMap = {
+            inicio:    [inicioSubPage,    setInicioSubPage],
+            cashflow:  [cashflowSubPage,  setCashflowSubPage],
+            watchlist: [watchlistSubPage, setWatchlistSubPage],
+          };
+          const [activeSub, setActiveSub] = subPageMap[currentPage] || [null, () => {}];
+          const items = SIDEBAR_ITEMS[currentPage];
+          return (
+            <nav className="globalSidebar" aria-label="Navegación de sección">
+              <div className="globalSidebarTitle">
+                {currentPage.charAt(0).toUpperCase() + currentPage.slice(1)}
+              </div>
+              {items.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`globalSidebarItem${activeSub === item.key ? " active" : ""}`}
+                  onClick={() => {
+                    setActiveSub(item.key);
+                    document.getElementById(`sec-${currentPage}-${item.key}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+          );
+        })() : null}
+        <main className="container">
         {toastNotifications.length ? (
           <div className="toastStack" role="status" aria-live="polite">
             {toastNotifications.map((toast) => (
@@ -4589,6 +6495,22 @@ export default function App() {
             <p>
               <strong>Nombre:</strong> {usuario.nombre}
             </p>
+
+            <section>
+              <h2>Apariencia</h2>
+              <div className="actionsRow" style={{ alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: "0.88rem" }}>Modo oscuro</span>
+                <button
+                  type="button"
+                  className={`buttonSecondary${darkMode ? " headerButtonActive" : ""}`}
+                  style={{ minWidth: 80 }}
+                  onClick={() => setDarkMode((prev) => !prev)}
+                >
+                  {darkMode ? "☀ Claro" : "☾ Oscuro"}
+                </button>
+              </div>
+            </section>
+
             <div className="settingsInlineRow">
               <div className="settingsInlineField">
                 <label htmlFor="userMoneda">Moneda del usuario</label>
@@ -4742,11 +6664,30 @@ export default function App() {
           mainContent
         )}
       </main>
+      </div>
 
       <footer className="appFooter">
         <div className="footerInner">
-          <span>Invests</span>
-          <span>{new Date().getFullYear()}</span>
+          <div className="footerBrand">
+            <span className="footerBrandName">Invests</span>
+            <span className="footerBrandTagline">Gestión de portafolios e inversiones personales</span>
+          </div>
+          <div className="footerCenter">
+            <p className="footerDisclaimer">
+              Los datos mostrados son meramente informativos y no constituyen asesoramiento financiero.{" "}
+              Precios y rentabilidades pasadas no garantizan resultados futuros.
+            </p>
+          </div>
+          <div className="footerRight">
+            <span className="footerDataSources">
+              Precios vía{" "}
+              <a href="https://finance.yahoo.com" target="_blank" rel="noreferrer">Yahoo Finance</a>
+              {" · "}
+              Benchmarks:{" "}
+              <a href="https://finance.yahoo.com/markets/world-indices/" target="_blank" rel="noreferrer">Índices mundiales</a>
+            </span>
+            <span className="footerCopy">© {new Date().getFullYear()} Invests</span>
+          </div>
         </div>
       </footer>
     </div>

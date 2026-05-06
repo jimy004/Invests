@@ -451,3 +451,14 @@ export const remove = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const updateNota = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const nota = req.body.nota != null ? String(req.body.nota) : null;
+    await Posicion.updatePosicionNota(id, nota);
+    res.json({ message: "Nota actualizada" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

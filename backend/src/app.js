@@ -22,6 +22,11 @@ import detallesaccionRoutes from "./routes/detallesaccion.routes.js";
 import snapshotConfigRoutes from "./routes/snapshotconfig.routes.js";
 import notificacionRoutes from "./routes/notificacion.routes.js";
 import noticiaRoutes from "./routes/noticia.routes.js";
+import precioAlertaRoutes from "./routes/precioalerta.routes.js";
+import watchlistRoutes from "./routes/watchlist.routes.js";
+import objetivoRoutes from "./routes/objetivo.routes.js";
+import dividendoRoutes from "./routes/dividendo.routes.js";
+import benchmarkRoutes from "./routes/benchmark.routes.js";
 import { startSnapshotScheduler } from "./services/snapshot-scheduler.service.js";
 import { ensureAutomationSchema } from "./services/automation-schema.service.js";
 
@@ -73,6 +78,11 @@ app.use('/detallesaccion', detallesaccionRoutes);
 app.use('/snapshot-config', snapshotConfigRoutes);
 app.use('/notificaciones', notificacionRoutes);
 app.use('/noticias', noticiaRoutes);
+app.use('/alertas-precio', precioAlertaRoutes);
+app.use('/watchlist', watchlistRoutes);
+app.use('/objetivos', objetivoRoutes);
+app.use('/dividendos', dividendoRoutes);
+app.use('/benchmark', benchmarkRoutes);
 
 
 

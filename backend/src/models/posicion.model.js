@@ -192,11 +192,14 @@ export const getResumenUsuario = (usuario_id) => pool.query(`
   GROUP BY u.id
 `, [usuario_id]);
 
-export const createPosicion = ({ 
-  portafolio_id, 
-  activo_id, 
-  cantidad = 0, 
-  preciopromedio = 0 
+export const updatePosicionNota = (id, nota) =>
+  pool.query("UPDATE Posicion SET nota=? WHERE id=?", [nota || null, id]);
+
+export const createPosicion = ({
+  portafolio_id,
+  activo_id,
+  cantidad = 0,
+  preciopromedio = 0
 }) => pool.query(
   "INSERT INTO Posicion(portafolio_id, activo_id, cantidad, preciopromedio) VALUES(?,?,?,?)",
   [portafolio_id, activo_id, cantidad, preciopromedio]

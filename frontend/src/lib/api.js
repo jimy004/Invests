@@ -405,3 +405,76 @@ export function eliminarTodasNotificacionesUsuario(usuarioId) {
 export function getNoticiasYahoo() {
   return request("/noticias/yahoo");
 }
+
+// ─── Precio Alertas ───────────────────────────────────────────────────────────
+export function getPrecioAlertasByUsuario(usuarioId) {
+  return request(`/alertas-precio/usuario/${usuarioId}`);
+}
+export function crearPrecioAlerta(payload) {
+  return request("/alertas-precio", { method: "POST", body: JSON.stringify(payload) });
+}
+export function actualizarPrecioAlerta(id, payload) {
+  return request(`/alertas-precio/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+}
+export function eliminarPrecioAlerta(id) {
+  return request(`/alertas-precio/${id}`, { method: "DELETE" });
+}
+
+// ─── Watchlist ────────────────────────────────────────────────────────────────
+export function getWatchlistByUsuario(usuarioId) {
+  return request(`/watchlist/usuario/${usuarioId}`);
+}
+export function crearWatchlistItem(payload) {
+  return request("/watchlist", { method: "POST", body: JSON.stringify(payload) });
+}
+export function actualizarWatchlistNota(id, nota) {
+  return request(`/watchlist/${id}/nota`, { method: "PATCH", body: JSON.stringify({ nota }) });
+}
+export function eliminarWatchlistItem(id) {
+  return request(`/watchlist/${id}`, { method: "DELETE" });
+}
+
+// ─── Objetivos Financieros ───────────────────────────────────────────────────
+export function getObjetivosByUsuario(usuarioId) {
+  return request(`/objetivos/usuario/${usuarioId}`);
+}
+export function crearObjetivo(payload) {
+  return request("/objetivos", { method: "POST", body: JSON.stringify(payload) });
+}
+export function actualizarObjetivo(id, payload) {
+  return request(`/objetivos/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+}
+export function eliminarObjetivo(id) {
+  return request(`/objetivos/${id}`, { method: "DELETE" });
+}
+
+// ─── Dividendos ───────────────────────────────────────────────────────────────
+export function getDividendosByPortafolio(portafolioId) {
+  return request(`/dividendos/portafolio/${portafolioId}`);
+}
+export function getDividendosByUsuario(usuarioId) {
+  return request(`/dividendos/usuario/${usuarioId}`);
+}
+export function crearDividendo(payload) {
+  return request("/dividendos", { method: "POST", body: JSON.stringify(payload) });
+}
+export function actualizarDividendo(id, payload) {
+  return request(`/dividendos/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+}
+export function eliminarDividendo(id) {
+  return request(`/dividendos/${id}`, { method: "DELETE" });
+}
+
+// ─── Benchmark ────────────────────────────────────────────────────────────────
+export function getBenchmarkHistorico(symbol, periodo) {
+  const params = new URLSearchParams({ symbol, periodo });
+  return request(`/benchmark/historico?${params.toString()}`);
+}
+export function getBenchmarkLista() {
+  return request("/benchmark/lista");
+}
+
+// ─── Nota en posición ────────────────────────────────────────────────────────
+export function actualizarPosicionNota(id, nota) {
+  return request(`/posiciones/${id}/nota`, { method: "PATCH", body: JSON.stringify({ nota }) });
+}

@@ -23,6 +23,7 @@ router.patch("/:id/cantidad", requireAuthUser, ensurePosicionParamOwned(), contr
 router.patch("/:id/precio", requireAuthUser, ensurePosicionParamOwned(), controller.updatePrecio);
 router.patch("/:id/incrementar", requireAuthUser, ensurePosicionParamOwned(), controller.incrementar);
 router.patch("/:id/decrementar", requireAuthUser, ensurePosicionParamOwned(), controller.decrementar);
+router.patch("/:id/nota", requireAuthUser, ensurePosicionParamOwned(), controller.updateNota);
 router.delete("/:id", requireAuthUser, ensurePosicionParamOwned(), controller.remove);
 
 export default router;

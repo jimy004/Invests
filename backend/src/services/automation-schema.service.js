@@ -73,6 +73,88 @@ async function ensureCashFlowMonedaColumn() {
   }
 }
 
+async function ensurePosicionNotaColumn() {
+  const [rows] = await pool.query(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Posicion' AND COLUMN_NAME = 'nota' LIMIT 1`
+  );
+  if (!rows.length) {
+    await pool.query(`ALTER TABLE Posicion ADD COLUMN nota TEXT NULL`);
+  }
+}
+
+async function ensurePrecioAlertaTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS PrecioAlerta (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      activo_id INT NOT NULL,
+      tipo ENUM('mayor','menor') NOT NULL,
+      precio_objetivo DECIMAL(15,4) NOT NULL,
+      activa TINYINT(1) NOT NULL DEFAULT 1,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_precioalerta_usuario FOREIGN KEY (usuario_id) REFERENCES Usuario(id) ON DELETE CASCADE,
+      CONSTRAINT fk_precioalerta_activo FOREIGN KEY (activo_id) REFERENCES Activo(id) ON DELETE CASCADE,
+      INDEX idx_precioalerta_usuario (usuario_id),
+      INDEX idx_precioalerta_activa (activa)
+    )
+  `);
+}
+
+async function ensureWatchlistTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS Watchlist (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      activo_id INT NOT NULL,
+      nota TEXT,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_watchlist (usuario_id, activo_id),
+      CONSTRAINT fk_watchlist_usuario FOREIGN KEY (usuario_id) REFERENCES Usuario(id) ON DELETE CASCADE,
+      CONSTRAINT fk_watchlist_activo FOREIGN KEY (activo_id) REFERENCES Activo(id) ON DELETE CASCADE
+    )
+  `);
+}
+
+async function ensureObjetivoFinancieroTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ObjetivoFinanciero (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      nombre VARCHAR(150) NOT NULL,
+      monto_objetivo DECIMAL(15,2) NOT NULL,
+      fecha_objetivo DATE NOT NULL,
+      monto_inicial DECIMAL(15,2) NOT NULL DEFAULT 0,
+      nota TEXT,
+      portafolio_ids TEXT,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_objetivo_usuario FOREIGN KEY (usuario_id) REFERENCES Usuario(id) ON DELETE CASCADE,
+      INDEX idx_objetivo_usuario (usuario_id)
+    )
+  `);
+  await pool.query(`
+    ALTER TABLE ObjetivoFinanciero ADD COLUMN IF NOT EXISTS portafolio_ids TEXT
+  `).catch(() => {});
+}
+
+async function ensureDividendoTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS Dividendo (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      posicion_id INT NOT NULL,
+      fecha DATE NOT NULL,
+      importe DECIMAL(15,4) NOT NULL,
+      moneda_id INT NULL,
+      observacion TEXT,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_dividendo_posicion FOREIGN KEY (posicion_id) REFERENCES Posicion(id) ON DELETE CASCADE,
+      CONSTRAINT fk_dividendo_moneda FOREIGN KEY (moneda_id) REFERENCES Moneda(id),
+      INDEX idx_dividendo_posicion (posicion_id),
+      INDEX idx_dividendo_fecha (fecha)
+    )
+  `);
+}
+
 export async function ensureAutomationSchema() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS SnapshotConfig (
@@ -111,4 +193,9 @@ export async function ensureAutomationSchema() {
   await ensureSnapshotFechaDateTime("PosicionSnapshot");
   await ensureCashFlowCategoriaColumn();
   await ensureCashFlowMonedaColumn();
+  await ensurePosicionNotaColumn();
+  await ensurePrecioAlertaTable();
+  await ensureWatchlistTable();
+  await ensureObjetivoFinancieroTable();
+  await ensureDividendoTable();
 }
