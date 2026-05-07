@@ -4,6 +4,7 @@ import {
   actualizarPortafolio,
   actualizarResumenPeso,
   actualizarUsuario,
+  cambiarPassword,
   crearCashFlow,
   crearPosicion,
   crearPortafolio,
@@ -206,6 +207,11 @@ export default function App() {
   const [unreadNotificaciones, setUnreadNotificaciones] = useState(0);
   const [loadingNotificaciones, setLoadingNotificaciones] = useState(false);
   const [settingsAutoSaveMessage, setSettingsAutoSaveMessage] = useState("");
+  const [pwNuevo, setPwNuevo] = useState("");
+  const [pwConfirmar, setPwConfirmar] = useState("");
+  const [showPwNuevo, setShowPwNuevo] = useState(false);
+  const [showPwConfirmar, setShowPwConfirmar] = useState(false);
+  const [pwMessage, setPwMessage] = useState("");
   const [expandedPosicionId, setExpandedPosicionId] = useState(null);
   const [detalleAccionPosicion, setDetalleAccionPosicion] = useState(null);
   const [detalleFondoPosicion, setDetalleFondoPosicion] = useState(null);
@@ -2053,6 +2059,26 @@ export default function App() {
     } catch (err) {
       setError(err.message);
       return false;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCambiarPassword(e) {
+    e.preventDefault();
+    setPwMessage("");
+    if (pwNuevo !== pwConfirmar) {
+      setPwMessage("Las contraseñas no coinciden");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await cambiarPassword(usuario.id, { password_nuevo: pwNuevo });
+      setPwMessage(res?.message || "Contraseña actualizada");
+      setPwNuevo("");
+      setPwConfirmar("");
+    } catch (err) {
+      setPwMessage(err.message || "Error al cambiar la contraseña");
     } finally {
       setLoading(false);
     }
@@ -6495,6 +6521,64 @@ export default function App() {
             <p>
               <strong>Nombre:</strong> {usuario.nombre}
             </p>
+
+            <section>
+              <h2>Cambiar contraseña</h2>
+              <form onSubmit={handleCambiarPassword}>
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <label htmlFor="pwNuevo">Nueva contraseña</label>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <input
+                        id="pwNuevo"
+                        type={showPwNuevo ? "text" : "password"}
+                        value={pwNuevo}
+                        onChange={(e) => setPwNuevo(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="buttonSecondary"
+                        style={{ minWidth: 38, padding: "0 8px" }}
+                        onClick={() => setShowPwNuevo((v) => !v)}
+                        title={showPwNuevo ? "Ocultar" : "Mostrar"}
+                      >
+                        {showPwNuevo ? "🙈" : "👁"}
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <label htmlFor="pwConfirmar">Confirmar</label>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <input
+                        id="pwConfirmar"
+                        type={showPwConfirmar ? "text" : "password"}
+                        value={pwConfirmar}
+                        onChange={(e) => setPwConfirmar(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="buttonSecondary"
+                        style={{ minWidth: 38, padding: "0 8px" }}
+                        onClick={() => setShowPwConfirmar((v) => !v)}
+                        title={showPwConfirmar ? "Ocultar" : "Mostrar"}
+                      >
+                        {showPwConfirmar ? "🙈" : "👁"}
+                      </button>
+                    </div>
+                  </div>
+                  <button type="submit" className="buttonPrimary" disabled={loading}>
+                    Guardar
+                  </button>
+                </div>
+                {pwMessage ? (
+                  <p style={{ color: pwMessage.includes("actualizada") ? "var(--color-success, green)" : "var(--color-danger, red)", margin: "8px 0 0" }}>
+                    {pwMessage}
+                  </p>
+                ) : null}
+              </form>
+            </section>
 
             <section>
               <h2>Apariencia</h2>

@@ -4,23 +4,23 @@
 :root {
   --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
 
-  /* Backgrounds */
-  --bg-app: #f0f4f8;
+  /* Backgrounds — melocotón suave */
+  --bg-app:     #fff8f3;
   --bg-surface: #ffffff;
-  --bg-raised: #f8fafc;
-  --bg-subtle: #f1f5f9;
+  --bg-raised:  #fff3eb;
+  --bg-subtle:  #ffe8d6;
 
-  /* Borders */
-  --border: #e2e8f0;
-  --border-strong: #cbd5e1;
+  /* Borders — warm peach */
+  --border:        #fcd0a8;
+  --border-strong: #f9b478;
 
-  /* Brand / Primary */
-  --blue-50:  #eff6ff;
-  --blue-100: #dbeafe;
-  --blue-500: #3b82f6;
-  --blue-600: #2563eb;
-  --blue-700: #1d4ed8;
-  --blue-900: #1e3a8a;
+  /* Brand / Primary — apricot-naranja pastel */
+  --blue-50:  #fff7ed;
+  --blue-100: #ffedd5;
+  --blue-500: #fb923c;
+  --blue-600: #f97316;
+  --blue-700: #ea580c;
+  --blue-900: #c2410c;
 
   /* Success / Positive */
   --green-50:  #f0fdf4;
@@ -45,22 +45,22 @@
   --violet-100: #ede9fe;
   --violet-600: #7c3aed;
 
-  /* Slate text */
-  --text-primary:   #0f172a;
-  --text-secondary: #475569;
-  --text-muted:     #94a3b8;
-  --text-inverse:   #f8fafc;
+  /* Text */
+  --text-primary:   #2d1a0a;
+  --text-secondary: #7a5438;
+  --text-muted:     #b8906a;
+  --text-inverse:   #fff8f3;
 
-  /* Header */
-  --header-bg:   #0f172a;
-  --header-bg2:  #1e293b;
+  /* Header — naranja vivo */
+  --header-bg:   #ea580c;
+  --header-bg2:  #f97316;
 
-  /* Shadows */
-  --shadow-xs:  0 1px 2px rgba(15, 23, 42, 0.06);
-  --shadow-sm:  0 1px 3px rgba(15, 23, 42, 0.10), 0 1px 2px rgba(15, 23, 42, 0.06);
-  --shadow-md:  0 4px 6px -1px rgba(15, 23, 42, 0.10), 0 2px 4px -2px rgba(15, 23, 42, 0.06);
-  --shadow-lg:  0 10px 15px -3px rgba(15, 23, 42, 0.10), 0 4px 6px -4px rgba(15, 23, 42, 0.05);
-  --shadow-xl:  0 20px 25px -5px rgba(15, 23, 42, 0.10), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
+  /* Shadows — undertono cálido */
+  --shadow-xs:  0 1px 2px rgba(28, 18, 9, 0.07);
+  --shadow-sm:  0 1px 3px rgba(28, 18, 9, 0.11), 0 1px 2px rgba(28, 18, 9, 0.07);
+  --shadow-md:  0 4px 6px -1px rgba(28, 18, 9, 0.11), 0 2px 4px -2px rgba(28, 18, 9, 0.07);
+  --shadow-lg:  0 10px 15px -3px rgba(28, 18, 9, 0.11), 0 4px 6px -4px rgba(28, 18, 9, 0.06);
+  --shadow-xl:  0 20px 25px -5px rgba(28, 18, 9, 0.11), 0 8px 10px -6px rgba(28, 18, 9, 0.06);
 
   /* Radius */
   --radius-sm:   6px;
@@ -134,7 +134,7 @@ a:hover { text-decoration: underline; }
   font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  background: linear-gradient(90deg, #f8fafc 0%, #93c5fd 100%);
+  background: linear-gradient(90deg, #ffffff 0%, #fed7aa 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -758,7 +758,7 @@ button:disabled {
   cursor: pointer;
 }
 .dark .tableRowSelected td {
-  background: rgba(37,99,235,0.18) !important;
+  background: rgba(234,88,12,0.18) !important;
   color: var(--text-primary);
 }
 

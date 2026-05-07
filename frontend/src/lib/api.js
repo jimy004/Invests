@@ -118,6 +118,13 @@ export function actualizarUsuario(id, payload) {
   });
 }
 
+export function cambiarPassword(id, payload) {
+  return request(`/usuarios/${id}/password`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function logoutUsuario() {
   const refresh_token = localStorage.getItem("refresh_token");
   if (refresh_token) {

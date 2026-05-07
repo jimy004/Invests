@@ -15,6 +15,7 @@ router.get("/me", requireAuthUser, controller.getMe);
 router.get("/", requireAuthUser, controller.getAll);
 router.get("/:id", requireAuthUser, ensureUsuarioParamMatchesAuth("id"), controller.getOne);
 router.put("/:id", requireAuthUser, ensureUsuarioParamMatchesAuth("id"), controller.update);
+router.put("/:id/password", requireAuthUser, ensureUsuarioParamMatchesAuth("id"), controller.changePassword);
 router.delete("/:id", requireAuthUser, ensureUsuarioParamMatchesAuth("id"), controller.remove);
 
 export default router;

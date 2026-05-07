@@ -243,6 +243,25 @@ export const update = async (req, res) => {
   }
 };
 
+export const changePassword = async (req, res) => {
+  try {
+    const { password_nuevo } = req.body;
+    if (!password_nuevo) {
+      return res.status(400).json({ message: "password_nuevo es requerido" });
+    }
+    if (password_nuevo.length < 4) {
+      return res.status(400).json({ message: "La nueva contraseña debe tener al menos 4 caracteres" });
+    }
+    const [rows] = await Usuario.getUsuarioById(req.params.id);
+    if (!rows.length) return res.status(404).json({ message: "No encontrado" });
+    const nuevoHash = await bcrypt.hash(password_nuevo, 10);
+    await Usuario.updateUsuarioPassword(req.params.id, nuevoHash);
+    res.json({ message: "Contraseña actualizada correctamente" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 export const remove = async (req, res) => {
   try {
     const [result] = await Usuario.deleteUsuario(req.params.id);
