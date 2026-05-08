@@ -6,7 +6,7 @@ RUN apk add --no-cache python3 py3-pip tzdata \
   && pip3 install --no-cache-dir --break-system-packages yfinance
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci --omit=dev
 
 COPY src ./src
 COPY scripts ./scripts

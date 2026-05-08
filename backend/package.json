@@ -2,7 +2,7 @@
   "name": "express-mysql",
   "type": "module",
   "scripts": {
-    "start": "node src/bootstrap.js",
+    "start": "node src/app.js",
     "import:activos:yahoo": "node scripts/import-activos-yahoo.js"
   },
   "dependencies": {
