@@ -2,76 +2,17 @@ import pool from "../db.js";
 import * as SnapshotConfig from "../models/snapshotconfig.model.js";
 import * as Notificacion from "../models/notificacion.model.js";
 import { fetchYahooPriceBySymbol, fetchYahooQuoteBySymbol } from "./yahoo.service.js";
+import { getFxRate } from "./fx-cache.service.js";
 
 const AUTO_SNAPSHOT_ENABLED =
   String(process.env.AUTO_SNAPSHOT_ENABLED ?? "true").toLowerCase() !== "false";
 const AUTO_SNAPSHOT_TICK_MS = Number(process.env.AUTO_SNAPSHOT_TICK_MS || 60000);
-const FX_CACHE_TTL_MS = Number(process.env.FX_CACHE_TTL_MS || 5 * 60 * 1000);
-
-const fxRateCache = new Map();
 
 let schedulerTimer = null;
 let isRunning = false;
 
 function normalizeTicker(value) {
   return String(value || "").trim().toUpperCase();
-}
-
-function getCachedFxRate(fromTicker, toTicker) {
-  const key = `${fromTicker}->${toTicker}`;
-  const cached = fxRateCache.get(key);
-  if (!cached) return null;
-  if (cached.expiresAt < Date.now()) {
-    fxRateCache.delete(key);
-    return null;
-  }
-  return cached.rate;
-}
-
-function setCachedFxRate(fromTicker, toTicker, rate) {
-  const key = `${fromTicker}->${toTicker}`;
-  fxRateCache.set(key, {
-    rate,
-    expiresAt: Date.now() + Math.max(1000, FX_CACHE_TTL_MS)
-  });
-}
-
-async function getFxRate(fromTickerRaw, toTickerRaw) {
-  const fromTicker = normalizeTicker(fromTickerRaw);
-  const toTicker = normalizeTicker(toTickerRaw);
-  if (!fromTicker || !toTicker || fromTicker === toTicker) return 1;
-
-  const cachedDirect = getCachedFxRate(fromTicker, toTicker);
-  if (Number.isFinite(cachedDirect) && cachedDirect > 0) {
-    return cachedDirect;
-  }
-
-  try {
-    const direct = await fetchYahooPriceBySymbol(`${fromTicker}${toTicker}=X`);
-    const directRate = Number(direct?.precio);
-    if (Number.isFinite(directRate) && directRate > 0) {
-      setCachedFxRate(fromTicker, toTicker, directRate);
-      setCachedFxRate(toTicker, fromTicker, 1 / directRate);
-      return directRate;
-    }
-  } catch {
-    // Intentar con par inverso.
-  }
-
-  try {
-    const inverse = await fetchYahooPriceBySymbol(`${toTicker}${fromTicker}=X`);
-    const inverseRate = Number(inverse?.precio);
-    if (Number.isFinite(inverseRate) && inverseRate > 0) {
-      const rate = 1 / inverseRate;
-      setCachedFxRate(fromTicker, toTicker, rate);
-      setCachedFxRate(toTicker, fromTicker, inverseRate);
-      return rate;
-    }
-  } catch {
-    // Fallback.
-  }
-
-  return 1;
 }
 
 async function getMarketQuoteForTicker(tickerRaw, quoteCache) {

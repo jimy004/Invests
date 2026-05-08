@@ -30,7 +30,10 @@ async function fetchHistoricalViaYahooV8(symbol, period1Unix, period2Unix, inter
 export const getHistorico = async (req, res) => {
   try {
     const { symbol = "SP500", periodo = "1y" } = req.query;
-    const yahooSymbol = BENCHMARKS[symbol] || symbol;
+    if (!BENCHMARKS[symbol]) {
+      return res.status(400).json({ error: `Símbolo no soportado. Use: ${Object.keys(BENCHMARKS).join(", ")}` });
+    }
+    const yahooSymbol = BENCHMARKS[symbol];
 
     const periodoMap = { "3m": 90, "6m": 180, "1y": 365, "2y": 730, "5y": 1825 };
     const days = periodoMap[periodo] || 365;

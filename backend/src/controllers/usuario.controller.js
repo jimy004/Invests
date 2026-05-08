@@ -16,7 +16,31 @@ const JWT_SECRET = getRequiredEnv("JWT_SECRET");
 const JWT_REFRESH_SECRET = getRequiredEnv("JWT_REFRESH_SECRET");
 const JWT_ACCESS_EXPIRES_IN = process.env.JWT_ACCESS_EXPIRES_IN || "15m";
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
-const revokedRefreshTokens = new Set();
+// Map<jti, expiresAtMs> — se purga automáticamente cada hora
+const revokedRefreshTokens = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [jti, expiresAt] of revokedRefreshTokens) {
+    if (expiresAt < now) revokedRefreshTokens.delete(jti);
+  }
+}, 60 * 60 * 1000).unref();
+
+function isRevoked(jti) {
+  if (!jti) return false;
+  const expiresAt = revokedRefreshTokens.get(jti);
+  if (!expiresAt) return false;
+  if (expiresAt < Date.now()) { revokedRefreshTokens.delete(jti); return false; }
+  return true;
+}
+
+function revokeToken(jti, expiresAt) {
+  if (jti) revokedRefreshTokens.set(jti, expiresAt * 1000);
+}
+
+function validatePassword(pw) {
+  if (!pw || pw.length < 8) return "La contraseña debe tener al menos 8 caracteres";
+  return null;
+}
 
 function signAccessToken(usuario) {
   return jwt.sign(
@@ -69,6 +93,8 @@ export const create = async (req, res) => {
     if (!nombre || !password) {
       return res.status(400).json({ message: "Nombre y password son requeridos" });
     }
+    const pwError = validatePassword(password);
+    if (pwError) return res.status(400).json({ message: pwError });
 
     const [existentes] = await Usuario.getUsuarioByNombre(nombre);
     if (existentes.length > 0) {
@@ -153,7 +179,7 @@ export const refreshToken = async (req, res) => {
       return res.status(401).json({ message: "Refresh token invalido" });
     }
 
-    if (payload.jti && revokedRefreshTokens.has(payload.jti)) {
+    if (isRevoked(payload.jti)) {
       return res.status(401).json({ message: "Refresh token revocado" });
     }
 
@@ -166,9 +192,7 @@ export const refreshToken = async (req, res) => {
     const access_token = signAccessToken(usuario);
     const new_refresh_token = signRefreshToken(usuario);
 
-    if (payload.jti) {
-      revokedRefreshTokens.add(payload.jti);
-    }
+    revokeToken(payload.jti, payload.exp);
 
     res.json({
       access_token,
@@ -189,9 +213,7 @@ export const logout = async (req, res) => {
 
     try {
       const payload = jwt.verify(refresh_token, JWT_REFRESH_SECRET);
-      if (payload?.jti) {
-        revokedRefreshTokens.add(payload.jti);
-      }
+      revokeToken(payload?.jti, payload?.exp);
     } catch {
       // Even with invalid/expired token, keep response idempotent.
     }
@@ -213,6 +235,8 @@ export const update = async (req, res) => {
 
     let nuevoPassword = actual.password;
     if (typeof req.body.password === "string" && req.body.password.trim() !== "") {
+      const pwError = validatePassword(req.body.password);
+      if (pwError) return res.status(400).json({ message: pwError });
       nuevoPassword = await bcrypt.hash(req.body.password, 10);
     }
 
@@ -249,9 +273,8 @@ export const changePassword = async (req, res) => {
     if (!password_nuevo) {
       return res.status(400).json({ message: "password_nuevo es requerido" });
     }
-    if (password_nuevo.length < 4) {
-      return res.status(400).json({ message: "La nueva contraseña debe tener al menos 4 caracteres" });
-    }
+    const pwError = validatePassword(password_nuevo);
+    if (pwError) return res.status(400).json({ message: pwError });
     const [rows] = await Usuario.getUsuarioById(req.params.id);
     if (!rows.length) return res.status(404).json({ message: "No encontrado" });
     const nuevoHash = await bcrypt.hash(password_nuevo, 10);
