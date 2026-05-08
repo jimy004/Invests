@@ -86,7 +86,8 @@ CREATE TABLE Portafolio (
     categoria_id INT,
     FOREIGN KEY (usuario_id) REFERENCES Usuario(id),
     FOREIGN KEY (moneda_id) REFERENCES Moneda(id),
-    FOREIGN KEY (categoria_id) REFERENCES Categoria(id)
+    FOREIGN KEY (categoria_id) REFERENCES Categoria(id),
+    INDEX idx_portafolio_usuario (usuario_id)
 );
 
 -- Tabla Activo
@@ -96,7 +97,9 @@ CREATE TABLE Activo (
     nombre VARCHAR(100),
     ticker VARCHAR(50),
     icono VARCHAR(255),
-    FOREIGN KEY (categoria_id) REFERENCES Categoria(id)
+    FOREIGN KEY (categoria_id) REFERENCES Categoria(id),
+    INDEX idx_activo_categoria (categoria_id),
+    INDEX idx_activo_ticker (ticker)
 );
 
 -- Tabla Sector
@@ -147,7 +150,8 @@ CREATE TABLE DetallesFondo (
     FOREIGN KEY (politica_id) REFERENCES Politica(id),
     FOREIGN KEY (tipo_id) REFERENCES Tipo(id),
     FOREIGN KEY (geografia_id) REFERENCES Geografia(id),
-    FOREIGN KEY (sector_id) REFERENCES Sector(id)
+    FOREIGN KEY (sector_id) REFERENCES Sector(id),
+    INDEX idx_detallesfondo_activo (activo_id)
 );
 
 -- Tabla Resumen
@@ -158,7 +162,8 @@ CREATE TABLE Resumen (
     inversionInicial DECIMAL(15,2) DEFAULT 0,
     categoria_id INT,
     FOREIGN KEY (categoria_id) REFERENCES Categoria(id),
-    FOREIGN KEY (usuario_id) REFERENCES Usuario(id)
+    FOREIGN KEY (usuario_id) REFERENCES Usuario(id),
+    INDEX idx_resumen_usuario (usuario_id)
 );
 
 -- Tabla CashFlow
@@ -187,13 +192,15 @@ CREATE TABLE Posicion (
     cantidad DECIMAL(15,4),
     preciopromedio DECIMAL(15,4),
     FOREIGN KEY (portafolio_id) REFERENCES Portafolio(id),
-    FOREIGN KEY (activo_id) REFERENCES Activo(id)
+    FOREIGN KEY (activo_id) REFERENCES Activo(id),
+    INDEX idx_posicion_portafolio (portafolio_id),
+    INDEX idx_posicion_activo (activo_id)
 );
 
 -- Tabla Orden
 CREATE TABLE Orden (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    numero INT,
+    numero INT AUTO_INCREMENT,
     tipo enum('compra', 'venta') NOT NULL,
     posicion_id INT,
     fecha DATE DEFAULT (CURRENT_DATE),
@@ -201,7 +208,10 @@ CREATE TABLE Orden (
     precio DECIMAL(15,4) NOT NULL,
     comision DECIMAL(15,4) DEFAULT 0,
     observacion TEXT,
-    FOREIGN KEY (posicion_id) REFERENCES Posicion(id)
+    FOREIGN KEY (posicion_id) REFERENCES Posicion(id),
+    INDEX idx_orden_posicion (posicion_id),
+    INDEX idx_orden_fecha (fecha),
+    INDEX idx_orden_posicion_fecha (posicion_id, fecha)
 );
 
 -- Tabla PortfolioSnapshot
@@ -209,20 +219,20 @@ CREATE TABLE PortfolioSnapshot (
     id INT AUTO_INCREMENT PRIMARY KEY,
     portafolio_id INT,
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
-    valor DECIMAL(15,2),
-    FOREIGN KEY (portafolio_id) REFERENCES Portafolio(id)
+    valor DECIMAL(15,2) NOT NULL,
+    FOREIGN KEY (portafolio_id) REFERENCES Portafolio(id),
+    INDEX idx_portfoliosnapshot_portafolio_fecha (portafolio_id, fecha)
 );
-
-
 
 -- Tabla PosicionSnapshot
 CREATE TABLE PosicionSnapshot (
     id INT AUTO_INCREMENT PRIMARY KEY,
     posicion_id INT,
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
-    valor DECIMAL(15,2),
+    valor DECIMAL(15,2) NOT NULL,
     cantidad DECIMAL(15,4),
-    FOREIGN KEY (posicion_id) REFERENCES Posicion(id)
+    FOREIGN KEY (posicion_id) REFERENCES Posicion(id),
+    INDEX idx_posicionsnapshot_posicion_fecha (posicion_id, fecha)
 );
 
 -- Tabla DetallesAccion (vacio, placeholder)
@@ -231,7 +241,63 @@ CREATE TABLE DetallesAccion (
     activo_id INT,
     sector_id INT,
     FOREIGN KEY (activo_id) REFERENCES Activo(id),
-    FOREIGN KEY (sector_id) REFERENCES Sector(id)
+    FOREIGN KEY (sector_id) REFERENCES Sector(id),
+    INDEX idx_detallesaccion_activo (activo_id)
+);
+
+-- Tabla ObjetivoFinanciero
+CREATE TABLE IF NOT EXISTS ObjetivoFinanciero (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NOT NULL,
+    nombre VARCHAR(200) NOT NULL,
+    monto_objetivo DECIMAL(15,2) NOT NULL,
+    fecha_objetivo DATE NOT NULL,
+    monto_inicial DECIMAL(15,2) DEFAULT 0,
+    nota TEXT,
+    portafolio_ids TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES Usuario(id) ON DELETE CASCADE,
+    INDEX idx_objetivo_usuario (usuario_id)
+);
+
+-- Tabla PrecioAlerta
+CREATE TABLE IF NOT EXISTS PrecioAlerta (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NOT NULL,
+    activo_id INT NOT NULL,
+    tipo ENUM('mayor','menor') NOT NULL,
+    precio_objetivo DECIMAL(15,4) NOT NULL,
+    activa TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES Usuario(id) ON DELETE CASCADE,
+    FOREIGN KEY (activo_id) REFERENCES Activo(id),
+    INDEX idx_precioalerta_usuario (usuario_id)
+);
+
+-- Tabla Watchlist
+CREATE TABLE IF NOT EXISTS Watchlist (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NOT NULL,
+    activo_id INT NOT NULL,
+    nota TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_watchlist_usuario_activo (usuario_id, activo_id),
+    FOREIGN KEY (usuario_id) REFERENCES Usuario(id) ON DELETE CASCADE,
+    FOREIGN KEY (activo_id) REFERENCES Activo(id)
+);
+
+-- Tabla Dividendo
+CREATE TABLE IF NOT EXISTS Dividendo (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    posicion_id INT NOT NULL,
+    fecha DATE NOT NULL,
+    importe DECIMAL(15,4) NOT NULL,
+    moneda_id INT,
+    observacion TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (posicion_id) REFERENCES Posicion(id) ON DELETE CASCADE,
+    FOREIGN KEY (moneda_id) REFERENCES Moneda(id),
+    INDEX idx_dividendo_posicion (posicion_id)
 );
 
 -- Seed categorias base (idempotente)

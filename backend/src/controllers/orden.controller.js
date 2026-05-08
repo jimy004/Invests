@@ -1,6 +1,13 @@
 import * as Orden from "../models/orden.model.js";
 import pool from "../db.js";
 
+function validateCantidadPrecio(cantidad, precio) {
+  if (cantidad <= 0 || precio <= 0) {
+    return "cantidad y precio deben ser numeros positivos";
+  }
+  return null;
+}
+
 export const getAll = async (req, res) => {
   try {
     const [rows] = await Orden.getOrdenesByUsuario(req.authUserId);
@@ -49,9 +56,8 @@ export const getByUsuario = async (req, res) => {
 
 export const getByActivo = async (req, res) => {
   try {
-    const [rows] = await Orden.getOrdenesByActivo(req.params.activo_id);
-    const filtered = rows.filter((row) => Number(row?.usuario_id || 0) === req.authUserId);
-    res.json(filtered);
+    const [rows] = await Orden.getOrdenesByActivo(req.params.activo_id, req.authUserId);
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -61,14 +67,10 @@ export const getByTipo = async (req, res) => {
   try {
     const { tipo } = req.params;
     if (tipo !== "compra" && tipo !== "venta") {
-      return res.status(400).json({
-        message: "Tipo debe ser 'compra' o 'venta'"
-      });
+      return res.status(400).json({ message: "Tipo debe ser 'compra' o 'venta'" });
     }
-
-    const [rows] = await Orden.getOrdenesByTipo(tipo);
-    const filtered = rows.filter((row) => Number(row?.usuario_id || 0) === req.authUserId);
-    res.json(filtered);
+    const [rows] = await Orden.getOrdenesByTipo(tipo, req.authUserId);
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -78,14 +80,10 @@ export const getByPeriodo = async (req, res) => {
   try {
     const { fecha_inicio, fecha_fin } = req.query;
     if (!fecha_inicio || !fecha_fin) {
-      return res.status(400).json({
-        message: "fecha_inicio y fecha_fin son requeridos"
-      });
+      return res.status(400).json({ message: "fecha_inicio y fecha_fin son requeridos" });
     }
-
-    const [rows] = await Orden.getOrdenesByPeriodo(fecha_inicio, fecha_fin);
-    const filtered = rows.filter((row) => Number(row?.usuario_id || 0) === req.authUserId);
-    res.json(filtered);
+    const [rows] = await Orden.getOrdenesByPeriodo(fecha_inicio, fecha_fin, req.authUserId);
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -136,35 +134,15 @@ export const create = async (req, res) => {
       });
     }
 
-    if (cantidad <= 0 || precio <= 0) {
-      return res.status(400).json({
-        message: "cantidad y precio deben ser numeros positivos"
-      });
-    }
+    const validErr = validateCantidadPrecio(cantidad, precio);
+    if (validErr) return res.status(400).json({ message: validErr });
 
     if (comision < 0) {
-      return res.status(400).json({
-        message: "La comision no puede ser negativa"
-      });
+      return res.status(400).json({ message: "La comision no puede ser negativa" });
     }
 
-    const [result] = await Orden.createOrden({
-      numero,
-      tipo,
-      posicion_id,
-      fecha,
-      cantidad,
-      precio,
-      comision,
-      observacion
-    });
-
-    const [ordenCreada] = await Orden.getOrdenById(result.insertId);
-    res.status(201).json({
-      id: result.insertId,
-      ...ordenCreada[0],
-      message: "Orden creada exitosamente"
-    });
+    const [result] = await Orden.createOrden({ tipo, posicion_id, fecha, cantidad, precio, comision, observacion });
+    res.status(201).json({ id: result.insertId, message: "Orden creada exitosamente" });
   } catch (err) {
     if (err.code === "ER_NO_REFERENCED_ROW_2") {
       return res.status(400).json({
@@ -185,20 +163,11 @@ export const ejecutarCompra = async (req, res) => {
       });
     }
 
-    if (cantidad <= 0 || precio <= 0) {
-      return res.status(400).json({
-        message: "cantidad y precio deben ser numeros positivos"
-      });
-    }
+    const validErr = validateCantidadPrecio(cantidad, precio);
+    if (validErr) return res.status(400).json({ message: validErr });
 
     const result = await Orden.ejecutarOrdenCompra(posicion_id, cantidad, precio, comision, observacion);
-    const [ordenCreada] = await Orden.getOrdenById(result.ordenId);
-
-    res.status(201).json({
-      id: result.ordenId,
-      ...ordenCreada[0],
-      message: "Orden de compra ejecutada exitosamente y posicion actualizada"
-    });
+    res.status(201).json({ id: result.ordenId, message: "Orden de compra ejecutada exitosamente y posicion actualizada" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -214,25 +183,14 @@ export const ejecutarVenta = async (req, res) => {
       });
     }
 
-    if (cantidad <= 0 || precio <= 0) {
-      return res.status(400).json({
-        message: "cantidad y precio deben ser numeros positivos"
-      });
-    }
+    const validErr = validateCantidadPrecio(cantidad, precio);
+    if (validErr) return res.status(400).json({ message: validErr });
 
     const result = await Orden.ejecutarOrdenVenta(posicion_id, cantidad, precio, comision, observacion);
-    const [ordenCreada] = await Orden.getOrdenById(result.ordenId);
-
     const mensaje = result.eliminada
       ? "Orden de venta ejecutada exitosamente y posicion actualizada (cantidad llego a cero)"
       : "Orden de venta ejecutada exitosamente y posicion actualizada";
-
-    res.status(201).json({
-      id: result.ordenId,
-      ...ordenCreada[0],
-      eliminada: result.eliminada,
-      message: mensaje
-    });
+    res.status(201).json({ id: result.ordenId, eliminada: result.eliminada, message: mensaje });
   } catch (err) {
     if (String(err?.message || "").includes("Cantidad insuficiente")) {
       return res.status(400).json({ error: err.message });

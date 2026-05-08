@@ -1,7 +1,7 @@
 import pool from "../db.js";
 
-export const getAllOrdenes = () => pool.query(`
-  SELECT o.*, 
+const BASE_SELECT = `
+  SELECT o.*,
          p.portafolio_id, p.activo_id, p.cantidad as posicion_cantidad, p.preciopromedio as posicion_preciopromedio,
          po.nombre as portafolio_nombre, po.usuario_id,
          a.nombre as activo_nombre, a.ticker, a.icono as activo_icono,
@@ -13,125 +13,33 @@ export const getAllOrdenes = () => pool.query(`
   LEFT JOIN Portafolio po ON p.portafolio_id = po.id
   LEFT JOIN Activo a ON p.activo_id = a.id
   LEFT JOIN Usuario u ON po.usuario_id = u.id
-`);
+`;
 
-export const getOrdenById = (id) => pool.query(`
-  SELECT o.*, 
-         p.portafolio_id, p.activo_id, p.cantidad as posicion_cantidad, p.preciopromedio as posicion_preciopromedio,
-         po.nombre as portafolio_nombre, po.usuario_id,
-         a.nombre as activo_nombre, a.ticker, a.icono as activo_icono,
-         u.nombre as usuario_nombre,
-         (o.cantidad * o.precio) as valor_orden,
-         (o.cantidad * o.precio + o.comision) as valor_total
-  FROM Orden o
-  LEFT JOIN Posicion p ON o.posicion_id = p.id
-  LEFT JOIN Portafolio po ON p.portafolio_id = po.id
-  LEFT JOIN Activo a ON p.activo_id = a.id
-  LEFT JOIN Usuario u ON po.usuario_id = u.id
-  WHERE o.id=?
-`, [id]);
+export const getAllOrdenes = () => pool.query(BASE_SELECT);
 
-export const getOrdenesByPosicion = (posicion_id) => pool.query(`
-  SELECT o.*, 
-         p.portafolio_id, p.activo_id, p.cantidad as posicion_cantidad, p.preciopromedio as posicion_preciopromedio,
-         po.nombre as portafolio_nombre, po.usuario_id,
-         a.nombre as activo_nombre, a.ticker, a.icono as activo_icono,
-         u.nombre as usuario_nombre,
-         (o.cantidad * o.precio) as valor_orden,
-         (o.cantidad * o.precio + o.comision) as valor_total
-  FROM Orden o
-  LEFT JOIN Posicion p ON o.posicion_id = p.id
-  LEFT JOIN Portafolio po ON p.portafolio_id = po.id
-  LEFT JOIN Activo a ON p.activo_id = a.id
-  LEFT JOIN Usuario u ON po.usuario_id = u.id
-  WHERE o.posicion_id=?
-  ORDER BY o.fecha DESC
-`, [posicion_id]);
+export const getOrdenById = (id) =>
+  pool.query(`${BASE_SELECT} WHERE o.id=?`, [id]);
 
-export const getOrdenesByPortafolio = (portafolio_id) => pool.query(`
-  SELECT o.*, 
-         p.portafolio_id, p.activo_id, p.cantidad as posicion_cantidad, p.preciopromedio as posicion_preciopromedio,
-         po.nombre as portafolio_nombre, po.usuario_id,
-         a.nombre as activo_nombre, a.ticker, a.icono as activo_icono,
-         u.nombre as usuario_nombre,
-         (o.cantidad * o.precio) as valor_orden,
-         (o.cantidad * o.precio + o.comision) as valor_total
-  FROM Orden o
-  LEFT JOIN Posicion p ON o.posicion_id = p.id
-  LEFT JOIN Portafolio po ON p.portafolio_id = po.id
-  LEFT JOIN Activo a ON p.activo_id = a.id
-  LEFT JOIN Usuario u ON po.usuario_id = u.id
-  WHERE p.portafolio_id=?
-  ORDER BY o.fecha DESC
-`, [portafolio_id]);
+export const getOrdenesByPosicion = (posicion_id) =>
+  pool.query(`${BASE_SELECT} WHERE o.posicion_id=? ORDER BY o.fecha DESC`, [posicion_id]);
 
-export const getOrdenesByUsuario = (usuario_id) => pool.query(`
-  SELECT o.*, 
-         p.portafolio_id, p.activo_id, p.cantidad as posicion_cantidad, p.preciopromedio as posicion_preciopromedio,
-         po.nombre as portafolio_nombre, po.usuario_id,
-         a.nombre as activo_nombre, a.ticker, a.icono as activo_icono,
-         u.nombre as usuario_nombre,
-         (o.cantidad * o.precio) as valor_orden,
-         (o.cantidad * o.precio + o.comision) as valor_total
-  FROM Orden o
-  LEFT JOIN Posicion p ON o.posicion_id = p.id
-  LEFT JOIN Portafolio po ON p.portafolio_id = po.id
-  LEFT JOIN Activo a ON p.activo_id = a.id
-  LEFT JOIN Usuario u ON po.usuario_id = u.id
-  WHERE po.usuario_id=?
-  ORDER BY o.fecha DESC
-`, [usuario_id]);
+export const getOrdenesByPortafolio = (portafolio_id) =>
+  pool.query(`${BASE_SELECT} WHERE p.portafolio_id=? ORDER BY o.fecha DESC`, [portafolio_id]);
 
-export const getOrdenesByActivo = (activo_id) => pool.query(`
-  SELECT o.*, 
-         p.portafolio_id, p.activo_id, p.cantidad as posicion_cantidad, p.preciopromedio as posicion_preciopromedio,
-         po.nombre as portafolio_nombre, po.usuario_id,
-         a.nombre as activo_nombre, a.ticker, a.icono as activo_icono,
-         u.nombre as usuario_nombre,
-         (o.cantidad * o.precio) as valor_orden,
-         (o.cantidad * o.precio + o.comision) as valor_total
-  FROM Orden o
-  LEFT JOIN Posicion p ON o.posicion_id = p.id
-  LEFT JOIN Portafolio po ON p.portafolio_id = po.id
-  LEFT JOIN Activo a ON p.activo_id = a.id
-  LEFT JOIN Usuario u ON po.usuario_id = u.id
-  WHERE p.activo_id=?
-  ORDER BY o.fecha DESC
-`, [activo_id]);
+export const getOrdenesByUsuario = (usuario_id) =>
+  pool.query(`${BASE_SELECT} WHERE po.usuario_id=? ORDER BY o.fecha DESC`, [usuario_id]);
 
-export const getOrdenesByTipo = (tipo) => pool.query(`
-  SELECT o.*, 
-         p.portafolio_id, p.activo_id, p.cantidad as posicion_cantidad, p.preciopromedio as posicion_preciopromedio,
-         po.nombre as portafolio_nombre, po.usuario_id,
-         a.nombre as activo_nombre, a.ticker, a.icono as activo_icono,
-         u.nombre as usuario_nombre,
-         (o.cantidad * o.precio) as valor_orden,
-         (o.cantidad * o.precio + o.comision) as valor_total
-  FROM Orden o
-  LEFT JOIN Posicion p ON o.posicion_id = p.id
-  LEFT JOIN Portafolio po ON p.portafolio_id = po.id
-  LEFT JOIN Activo a ON p.activo_id = a.id
-  LEFT JOIN Usuario u ON po.usuario_id = u.id
-  WHERE o.tipo=?
-  ORDER BY o.fecha DESC
-`, [tipo]);
+export const getOrdenesByActivo = (activo_id, usuario_id) =>
+  pool.query(`${BASE_SELECT} WHERE p.activo_id=? AND po.usuario_id=? ORDER BY o.fecha DESC`, [activo_id, usuario_id]);
 
-export const getOrdenesByPeriodo = (fecha_inicio, fecha_fin) => pool.query(`
-  SELECT o.*, 
-         p.portafolio_id, p.activo_id, p.cantidad as posicion_cantidad, p.preciopromedio as posicion_preciopromedio,
-         po.nombre as portafolio_nombre, po.usuario_id,
-         a.nombre as activo_nombre, a.ticker, a.icono as activo_icono,
-         u.nombre as usuario_nombre,
-         (o.cantidad * o.precio) as valor_orden,
-         (o.cantidad * o.precio + o.comision) as valor_total
-  FROM Orden o
-  LEFT JOIN Posicion p ON o.posicion_id = p.id
-  LEFT JOIN Portafolio po ON p.portafolio_id = po.id
-  LEFT JOIN Activo a ON p.activo_id = a.id
-  LEFT JOIN Usuario u ON po.usuario_id = u.id
-  WHERE o.fecha BETWEEN ? AND ?
-  ORDER BY o.fecha DESC
-`, [fecha_inicio, fecha_fin]);
+export const getOrdenesByTipo = (tipo, usuario_id) =>
+  pool.query(`${BASE_SELECT} WHERE o.tipo=? AND po.usuario_id=? ORDER BY o.fecha DESC`, [tipo, usuario_id]);
+
+export const getOrdenesByPeriodo = (fecha_inicio, fecha_fin, usuario_id) =>
+  pool.query(
+    `${BASE_SELECT} WHERE o.fecha BETWEEN ? AND ? AND po.usuario_id=? ORDER BY o.fecha DESC`,
+    [fecha_inicio, fecha_fin, usuario_id]
+  );
 
 export const getResumenOrdenesPortafolio = (portafolio_id) => pool.query(`
   SELECT 
@@ -176,29 +84,18 @@ export const getUltimoNumeroOrden = () => pool.query(`
   SELECT COALESCE(MAX(numero), 0) as ultimo_numero FROM Orden
 `);
 
-export const createOrden = ({ 
-  numero = null,
-  tipo, 
-  posicion_id, 
-  fecha = new Date().toISOString().split('T')[0], 
-  cantidad, 
-  precio, 
-  comision = 0, 
-  observacion = null 
-}) => {
-  // Si no se proporciona número, generamos uno automático
-  if (numero === null) {
-    return pool.query(`
-      INSERT INTO Orden(tipo, posicion_id, fecha, cantidad, precio, comision, observacion, numero)
-      VALUES(?,?,?,?,?,?,?, (SELECT siguiente_numero FROM (SELECT COALESCE(MAX(numero), 0) + 1 AS siguiente_numero FROM Orden) t))
-    `, [tipo, posicion_id, fecha, cantidad, precio, comision, observacion]);
-  } else {
-    return pool.query(
-      "INSERT INTO Orden(numero, tipo, posicion_id, fecha, cantidad, precio, comision, observacion) VALUES(?,?,?,?,?,?,?,?)",
-      [numero, tipo, posicion_id, fecha, cantidad, precio, comision, observacion]
-    );
-  }
-};
+export const createOrden = ({
+  tipo,
+  posicion_id,
+  fecha = new Date().toISOString().split('T')[0],
+  cantidad,
+  precio,
+  comision = 0,
+  observacion = null
+}) => pool.query(
+  "INSERT INTO Orden(tipo, posicion_id, fecha, cantidad, precio, comision, observacion) VALUES(?,?,?,?,?,?,?)",
+  [tipo, posicion_id, fecha, cantidad, precio, comision, observacion]
+);
 
 export const updateOrden = (id, { 
   numero, 
@@ -290,11 +187,10 @@ export const ejecutarOrdenCompra = async (posicion_id, cantidad, precio, comisio
   try {
     await connection.beginTransaction();
     
-    // Crear la orden de compra
-    const [resultOrden] = await connection.query(`
-      INSERT INTO Orden(tipo, posicion_id, fecha, cantidad, precio, comision, observacion, numero)
-      VALUES('compra', ?, CURDATE(), ?, ?, ?, ?, (SELECT siguiente_numero FROM (SELECT COALESCE(MAX(numero), 0) + 1 AS siguiente_numero FROM Orden) t))
-    `, [posicion_id, cantidad, precio, comision, observacion]);
+    const [resultOrden] = await connection.query(
+      "INSERT INTO Orden(tipo, posicion_id, fecha, cantidad, precio, comision, observacion) VALUES('compra', ?, CURDATE(), ?, ?, ?, ?)",
+      [posicion_id, cantidad, precio, comision, observacion]
+    );
     
     const ordenId = resultOrden.insertId;
     
@@ -338,11 +234,10 @@ export const ejecutarOrdenVenta = async (posicion_id, cantidad, precio, comision
       throw new Error(`Cantidad insuficiente. Disponible: ${posicion[0].cantidad}, Solicitado: ${cantidad}`);
     }
     
-    // Crear la orden de venta
-    const [resultOrden] = await connection.query(`
-      INSERT INTO Orden(tipo, posicion_id, fecha, cantidad, precio, comision, observacion, numero)
-      VALUES('venta', ?, CURDATE(), ?, ?, ?, ?, (SELECT siguiente_numero FROM (SELECT COALESCE(MAX(numero), 0) + 1 AS siguiente_numero FROM Orden) t))
-    `, [posicion_id, cantidad, precio, comision, observacion]);
+    const [resultOrden] = await connection.query(
+      "INSERT INTO Orden(tipo, posicion_id, fecha, cantidad, precio, comision, observacion) VALUES('venta', ?, CURDATE(), ?, ?, ?, ?)",
+      [posicion_id, cantidad, precio, comision, observacion]
+    );
     
     const ordenId = resultOrden.insertId;
     

@@ -1,19 +1,32 @@
 import * as Watchlist from "../models/watchlist.model.js";
 import { fetchYahooQuoteBySymbol } from "../services/yahoo.service.js";
 
-export const getByUsuario = async (req, res) => {
-  try {
-    const [rows] = await Watchlist.getByUsuario(Number(req.params.usuario_id));
-    const withMarket = await Promise.all(
-      rows.map(async (row) => {
+const QUOTE_CONCURRENCY = 5;
+
+async function enrichWithQuotes(rows) {
+  const results = [];
+  for (let i = 0; i < rows.length; i += QUOTE_CONCURRENCY) {
+    const batch = rows.slice(i, i + QUOTE_CONCURRENCY);
+    const enriched = await Promise.all(
+      batch.map(async (row) => {
         try {
           const quote = await fetchYahooQuoteBySymbol(row.ticker);
           return { ...row, precio_actual: quote.precio, variacion_porcentual: quote.variacion_porcentual };
-        } catch {
+        } catch (err) {
+          console.error(`[watchlist] Error obteniendo precio para ${row.ticker}:`, err.message);
           return { ...row, precio_actual: null, variacion_porcentual: null };
         }
       })
     );
+    results.push(...enriched);
+  }
+  return results;
+}
+
+export const getByUsuario = async (req, res) => {
+  try {
+    const [rows] = await Watchlist.getByUsuario(Number(req.params.usuario_id));
+    const withMarket = await enrichWithQuotes(rows);
     res.json(withMarket);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -31,7 +44,7 @@ export const create = async (req, res) => {
     });
     res.status(201).json({ id: result.insertId, message: "Añadido a watchlist" });
   } catch (err) {
-    if (String(err.message).includes("Duplicate")) {
+    if (err.code === "ER_DUP_ENTRY") {
       return res.status(409).json({ message: "El activo ya esta en la watchlist" });
     }
     res.status(500).json({ error: err.message });

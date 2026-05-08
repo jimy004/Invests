@@ -132,9 +132,8 @@ async function ensureObjetivoFinancieroTable() {
       INDEX idx_objetivo_usuario (usuario_id)
     )
   `);
-  await pool.query(`
-    ALTER TABLE ObjetivoFinanciero ADD COLUMN IF NOT EXISTS portafolio_ids TEXT
-  `).catch(() => {});
+  const [[{ cnt }]] = await pool.query(`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='ObjetivoFinanciero' AND COLUMN_NAME='portafolio_ids'`);
+  if (!cnt) await pool.query(`ALTER TABLE ObjetivoFinanciero ADD COLUMN portafolio_ids TEXT`);
 }
 
 async function ensureDividendoTable() {

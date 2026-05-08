@@ -11,6 +11,16 @@ const PYTHON_SCRIPT_PATH = path.resolve(__dirname, "../../scripts/yahoo_api.py")
 const PYTHON_FALLBACK_ENABLED =
   String(process.env.YAHOO_PYTHON_FALLBACK_ENABLED ?? "true").toLowerCase() !== "false";
 const PYTHON_TIMEOUT_MS = Number(process.env.YAHOO_PYTHON_TIMEOUT_MS || 15000);
+const YAHOO_JS_TIMEOUT_MS = Number(process.env.YAHOO_JS_TIMEOUT_MS || 10000);
+
+function withTimeout(promise) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("yahoo-finance2 timeout")), YAHOO_JS_TIMEOUT_MS)
+    )
+  ]);
+}
 
 function normalizeSymbol(rawSymbol) {
   return String(rawSymbol || "").trim().toUpperCase();
@@ -144,7 +154,7 @@ export async function fetchYahooAssetBySymbol(rawSymbol) {
     // Intentar Yahoo JS como respaldo.
   }
 
-  const quote = await yahooFinance.quote(symbol);
+  const quote = await withTimeout(yahooFinance.quote(symbol));
   if (!quote?.symbol) {
     throw new Error("No se encontro informacion del simbolo");
   }
@@ -177,7 +187,7 @@ export async function fetchYahooPriceBySymbol(rawSymbol) {
     // Intentar Yahoo JS como respaldo.
   }
 
-  const quote = await yahooFinance.quote(symbol);
+  const quote = await withTimeout(yahooFinance.quote(symbol));
   const price = Number(quote?.regularMarketPrice);
   if (!quote?.symbol || !Number.isFinite(price) || price <= 0) {
     throw new Error(`No se pudo obtener precio valido para ${symbol}`);
@@ -218,7 +228,7 @@ export async function fetchYahooQuoteBySymbol(rawSymbol) {
     // Intentar Yahoo JS como respaldo.
   }
 
-  const quote = await yahooFinance.quote(symbol);
+  const quote = await withTimeout(yahooFinance.quote(symbol));
   if (!quote?.symbol) {
     throw new Error(`No se encontro informacion del simbolo ${symbol}`);
   }
@@ -252,10 +262,10 @@ export async function fetchYahooInstrumentProfileBySymbol(rawSymbol) {
   }
 
   const [quote, summary] = await Promise.all([
-    yahooFinance.quote(symbol),
-    yahooFinance.quoteSummary(symbol, {
+    withTimeout(yahooFinance.quote(symbol)),
+    withTimeout(yahooFinance.quoteSummary(symbol, {
       modules: ["price", "assetProfile", "fundProfile", "summaryProfile"]
-    }).catch(() => ({}))
+    }).catch(() => ({}))),
   ]);
 
   if (!quote?.symbol) {
