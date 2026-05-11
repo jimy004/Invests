@@ -2,9 +2,6 @@ node_modules/
 __pycache__/
 *.pyc
 
-# Entorno
-.env
-
 # Build frontend
 frontend/dist/
 frontend/.vite/
